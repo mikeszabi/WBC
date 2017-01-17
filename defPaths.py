@@ -10,4 +10,4 @@ import os
 project='WBC'
 root_dir=r'd:\Projects'
 data_dir=os.path.join(root_dir,project,'data')
-image_dir=os.path.join(data_dir,'temp','WBC Types','Neutrophil')
+image_dir=os.path.join(data_dir,'temp','WBC Types','Lymphocyte')

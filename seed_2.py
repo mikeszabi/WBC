@@ -96,35 +96,38 @@ tools.maskOverlay(im_onech,local_maxi_dilate,0.5,1,1)
 # watershed
 labels_ws = morphology.watershed(-dist_transform, markers, mask=foreground_mask_open)
 
-for label in np.unique(labels_ws):
-	# if the label is zero, we are examining the 'background'
-	# so simply ignore it
-	if label == 0:
-		continue
- 
-	# otherwise, allocate memory for the label region and draw
-	# it on the mask
-	mask = np.zeros(im_onech.shape, dtype="uint8")
-	mask[labels_ws == label] = 255
- 
-	# detect contours in the mask and grab the largest one
-	cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,
-		cv2.CHAIN_APPROX_SIMPLE)[-2]
-	c = max(cnts, key=cv2.contourArea)
- 
-	# draw a circle enclosing the object
-	((x, y), r) = cv2.minEnclosingCircle(c)
-	cv2.circle(im, (int(x), int(y)), int(r), (0, 255, 0), 2)
-	cv2.putText(im, "#{}".format(label), (int(x) - 10, int(y)),
-		cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
- 
-cv2.imshow('alma',im)
-cv2.waitKey()
-
 mag = tools.getGradientMagnitude(labels_ws.astype('float32'))
 mag[mag>0]=255
 
-tools.maskOverlay(im,mag,0.5,2,1)
+im2=tools.maskOverlay(im,mag,0.5,1,0)
+#cv2.imshow('over',im2)
+#cv2.waitKey()
+
+for label in np.unique(labels_ws):
+    	# if the label is zero, we are examining the 'background'
+    	# so simply ignore it
+     if label == 0:
+         continue
+  
+     mask = np.zeros(im_onech.shape, dtype="uint8")
+     mask[labels_ws == label] = 255
+     cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)[-2]
+     c = max(cnts, key=cv2.contourArea)
+     x,y,w,h = cv2.boundingRect(c)
+     if ((x>parameters.rbcR) & (x+w<im.shape[1]-parameters.rbcR) & 
+         (y>parameters.rbcR) & (y+h<im.shape[0]-parameters.rbcR)):
+        cv2.rectangle(im2,(x,y),(x+w,y+h),(255,255,0),1)
+        cv2.putText(im2, "#{}".format(label), (x - 10, y),cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2) 
+    
+    
+    	# draw a circle enclosing the object
+    	#((x, y), r) = cv2.minEnclosingCircle(c)
+    	#cv2.circle(im2, (int(x), int(y)), int(r), (0, 255, 0), 2)
+     
+     
+         
+cv2.imshow('alma',im2)
+cv2.waitKey()
 
 
 #wsC = cv2.applyColorMap(labels_ws, cv2.COLORMAP_PARULA)
