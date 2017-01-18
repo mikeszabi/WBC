@@ -5,7 +5,7 @@ Created on Wed Jan 11 08:28:12 2017
 @author: SzMike
 """
 
-import os
+import os, sys
 import numpy as np
 from skimage import morphology
 from skimage import feature
@@ -14,18 +14,18 @@ import math
 
 import cv2
 
+lib_path = os.path.abspath(os.path.join('.', 'tools'))
+sys.path.append(lib_path)
 
-from defPaths import *
+from pr_params import prp
 import tools
 
-class parameters:
-    pixelSize=1 # in microns
-    magnification=1
-    rbcR=25
-    wbcRatio=0.8
 
 if __name__ == '__main__':
     
+    prp=prp()
+    
+    image_dir=prp.getTestImageDirs('Lymphocyte')
     image_file=os.path.join(image_dir,'23.bmp')
     im = cv2.imread(image_file,cv2.IMREAD_COLOR)
     
@@ -38,7 +38,7 @@ if __name__ == '__main__':
     
     # processing for dtf
     
-    r=int(parameters.rbcR/2)
+    r=int(prp.rbcR/2)
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(r,r))
     
     foreground_mask_open=cv2.morphologyEx(foreground_mask, cv2.MORPH_OPEN, kernel, iterations=1)
@@ -52,20 +52,20 @@ if __name__ == '__main__':
     
     for i in range(output[0]):
         area=output[2][i][4]
-        if area<parameters.rbcR*parameters.rbcR/5: 
+        if area<prp.rbcR*prp.rbcR/5: 
             foreground_mask_open[output[1]==i]=255
     
     
     # use dtf to find markers for watershed
     dist_transform = cv2.distanceTransform(foreground_mask_open,cv2.DIST_L2,5)
     
-    dist_transform[dist_transform<parameters.rbcR*0.5]=0
+    dist_transform[dist_transform<prp.rbcR*0.5]=0
         
     # watershed
-    r=int(parameters.rbcR/2)
+    r=int(prp.rbcR/2)
     kernel = np.ones((r,r),np.uint8)
     
-    local_maxi = feature.peak_local_max(dist_transform, indices=False, footprint=np.ones((int(parameters.rbcR*0.6), int(parameters.rbcR*0.6))), labels=foreground_mask_open)
+    local_maxi = feature.peak_local_max(dist_transform, indices=False, footprint=np.ones((int(prp.rbcR*0.6), int(prp.rbcR*0.6))), labels=foreground_mask_open)
     local_maxi_dilate=cv2.dilate(local_maxi.astype('uint8')*255,kernel, iterations = 1)
     markers = measure.label(local_maxi_dilate)
     
@@ -92,11 +92,11 @@ if __name__ == '__main__':
          cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)[-2]
          c = max(cnts, key=cv2.contourArea)
          x,y,w,h = cv2.boundingRect(c)
-         if ((x>parameters.rbcR) & (x+w<im.shape[1]-parameters.rbcR) & 
-             (y>parameters.rbcR) & (y+h<im.shape[0]-parameters.rbcR)):
+         if ((x>prp.rbcR) & (x+w<im.shape[1]-prp.rbcR) & 
+             (y>prp.rbcR) & (y+h<im.shape[0]-prp.rbcR)):
             cv2.rectangle(im2,(x,y),(x+w,y+h),(255,255,255),2)
             cv2.putText(im2, "#{}".format(label), (x - 10, y),cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2) 
-            if cv2.contourArea(c)>2*int(math.pi*math.pow(parameters.wbcRatio*parameters.rbcR,2)):
+            if cv2.contourArea(c)>2*int(math.pi*math.pow(prp.wbcRatio*prp.rbcR,2)):
                 cv2.rectangle(im2,(x,y),(x+w,y+h),(0,0,255),3)
     cv2.imshow('detected',im2)    
     cv2.waitKey()

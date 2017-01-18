@@ -5,28 +5,25 @@ Created on Tue Jan 10 20:55:57 2017
 @author: SzMike
 """
 
-import os
-#import importlib
+import os, sys
 import numpy as np
-#from skimage import segmentation
-#from scipy import ndimage
 from skimage import morphology
 from skimage import feature
-#from skimage import restoration
 from skimage import measure
+import math
 
 import cv2
-#from matplotlib import pyplot as plt
-from defPaths import *
+
+lib_path = os.path.abspath(os.path.join('.', 'tools'))
+sys.path.append(lib_path)
+
+from pr_params import prp
 import tools
 
-class parameters:
-    pixelSize=1 # in microns
-    magnification=1
-    rbcR=25
+prp=prp()
 
-## read image    
-image_file=os.path.join(image_dir,'60.bmp')
+image_dir=prp.getTestImageDirs('Lymphocyte')
+image_file=os.path.join(image_dir,'23.bmp')
 im = cv2.imread(image_file,cv2.IMREAD_COLOR)
 
 # choose best color channel - for separating background
