@@ -7,7 +7,7 @@ Created on Wed Jan 18 09:20:02 2017
 
 import os
 
-class prp:
+class param:
     def __init__(self):
         self.pixelSize=1 # in microns
         self.magnification=1
