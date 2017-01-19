@@ -72,8 +72,7 @@ if __name__ == '__main__':
     labels_ws = morphology.watershed(-dist_transform, markers, mask=foreground_mask_open)
     
     # edge map for visualization
-    mag = tools.getGradientMagnitude(labels_ws.astype('float32'))
-    mag[mag>0]=255
+    mag=segmentation.find_boundaries(labels_ws).astype('uint8')*255
 
     im2=tools.maskOverlay(im,mag,0.5,1,0)
     cv2.namedWindow('detected')

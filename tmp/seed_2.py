@@ -5,29 +5,32 @@ Created on Tue Jan 10 20:55:57 2017
 @author: SzMike
 """
 
-import os, sys
+import os
+import _init_path
 import numpy as np
 from skimage import morphology
 from skimage import feature
 from skimage import measure
+from skimage import segmentation
 import math
 
 import cv2
 
-lib_path = os.path.abspath(os.path.join('.', 'tools'))
-sys.path.append(lib_path)
-
-from pr_params import prp
+from params import param
 import tools
 
-prp=prp()
-
-image_dir=prp.getTestImageDirs('Lymphocyte')
+param=param()
+    
+image_dir=param.getTestImageDirs('Lymphocyte')
 image_file=os.path.join(image_dir,'23.bmp')
 im = cv2.imread(image_file,cv2.IMREAD_COLOR)
 
 # choose best color channel - for separating background
 im_onech = im[:,:,1];
+             
+cC = cv2.applyColorMap(im_onech, cv2.COLORMAP_JET)     
+cv2.imshow('alma',cC)
+cv2.waitKey()        
 hist = tools.colorHist(im_onech,1)
 
 # homogen illumination correction
@@ -44,12 +47,12 @@ tools.maskOverlay(im_onech,foreground_mask,0.5,2,1)
 
 # processing for dtf
 
-r=int(parameters.rbcR/2)
+r=int(param.rbcR/2)
 kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(r,r))
 
 foreground_mask_open=cv2.morphologyEx(foreground_mask, cv2.MORPH_OPEN, kernel, iterations=1)
 
-tools.maskOverlay(im_eq,foreground_mask_open,0.5,2,1)
+tools.maskOverlay(im_onech,foreground_mask_open,0.5,2,1)
 
 # filling convex holes
 
@@ -64,7 +67,7 @@ tools.normalize(lab,1)
 
 for i in range(output[0]):
     area=output[2][i][4]
-    if area<parameters.rbcR*parameters.rbcR/5: #cv2.isContourConvex(:
+    if area<param.rbcR*param.rbcR/5: #cv2.isContourConvex(:
         # ToDo and if convex
         print(i)
         foreground_mask_open[output[1]==i]=255
@@ -83,7 +86,7 @@ tools.normalize(dist_transform,1)
 
 kernel = np.ones((9,9),np.uint8)
 
-local_maxi = feature.peak_local_max(dist_transform, indices=False, footprint=np.ones((int(parameters.rbcR*0.6), int(parameters.rbcR*0.6))), labels=foreground_mask_open)
+local_maxi = feature.peak_local_max(dist_transform, indices=False, footprint=np.ones((int(param.rbcR*0.6), int(param.rbcR*0.6))), labels=foreground_mask_open)
 local_maxi_dilate=cv2.dilate(local_maxi.astype('uint8')*255,kernel, iterations = 1)
 markers = measure.label(local_maxi_dilate)
 
@@ -94,9 +97,10 @@ tools.maskOverlay(im_onech,local_maxi_dilate,0.5,1,1)
 labels_ws = morphology.watershed(-dist_transform, markers, mask=foreground_mask_open)
 
 mag = tools.getGradientMagnitude(labels_ws.astype('float32'))
+mag=segmentation.find_boundaries(labels_ws).astype('uint8')*255
 mag[mag>0]=255
 
-im2=tools.maskOverlay(im,mag,0.5,1,0)
+im2=tools.maskOverlay(im,mag,0.5,1,1)
 #cv2.imshow('over',im2)
 #cv2.waitKey()
 
