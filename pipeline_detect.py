@@ -11,6 +11,7 @@ import numpy as np
 from skimage import morphology
 from skimage import feature
 from skimage import measure
+from skimage import segmentation
 import math
 
 import cv2
@@ -23,8 +24,10 @@ if __name__ == '__main__':
     
     param=param()
     
-    image_dir=param.getTestImageDirs('Lymphocyte')
-    image_file=os.path.join(image_dir,'23.bmp')
+    imDirs=os.listdir(param.getTestImageDirs(''))
+    print(imDirs)
+    image_dir=param.getTestImageDirs(imDirs[5])
+    image_file=os.path.join(image_dir,'49_NEU.bmp')
     im = cv2.imread(image_file,cv2.IMREAD_COLOR)
     
     # choose best color channel - for separating background

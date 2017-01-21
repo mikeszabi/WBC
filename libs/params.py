@@ -16,7 +16,7 @@ class param:
         self.project='WBC'
         self.root_dir=r'd:\Projects'
     
-    def getTestImageDirs(self,wbc_type='Lymphocyte'):
+    def getTestImageDirs(self,wbc_type=''):
         data_dir=os.path.join(self.root_dir,self.project,'data')
         image_dir=os.path.join(data_dir,'Test','WBC Types',wbc_type)
         return image_dir
