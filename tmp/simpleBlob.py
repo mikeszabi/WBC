@@ -18,10 +18,10 @@ im = cv2.imread(image_file) #, cv2.IMREAD_GRAYSCALE)
  
 # Set up the detector with default parameters.
 params = cv2.SimpleBlobDetector_Params()
-params.minArea = 16
+params.minArea = 1000
 params.maxArea = 100000000
 params.filterByArea = True
-params.thresholdStep=5
+params.thresholdStep=1
 detector = cv2.SimpleBlobDetector_create(params)
  
 # Detect blobs.
@@ -36,3 +36,6 @@ cv2.imshow("Keypoints", im_with_keypoints)
 cv2.waitKey(0)
 
 haar2d.main(image_file)
+
+for item in keypoints:
+    print(item.size/2)

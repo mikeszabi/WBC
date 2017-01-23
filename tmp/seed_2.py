@@ -27,7 +27,7 @@ param=param()
 imDirs=os.listdir(param.getImageDirs(''))
 print(imDirs)
 image_dir=param.getImageDirs(imDirs[0])
-image_file=os.path.join(image_dir,'3.bmp')
+image_file=os.path.join(image_dir,'4.bmp')
 im = cv2.imread(image_file,cv2.IMREAD_COLOR)
 
 im=cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
@@ -88,7 +88,7 @@ th, foreground_mask = cv2.threshold(im_denoise,0,255,cv2.THRESH_BINARY+cv2.THRES
 
 # processing for dtf
 
-r=int(2*param.rbcR)
+r=int(1.5*param.rbcR)
 kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(r,r))
 
 foreground_mask_open=cv2.morphologyEx(foreground_mask, cv2.MORPH_OPEN, kernel, iterations=1)
