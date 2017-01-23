@@ -11,7 +11,7 @@ from matplotlib import pyplot as plt
 
 # colorhits
 def colorHist(im,plotFlag):
-    color = ('b','g','r')
+    color = ('r','g','b')
     histr=[]
     if len(im.shape)==2:
         nCh=1
@@ -80,6 +80,24 @@ def dtfSegment(mask):
     markers = markers+1
     # Now, mark the region of unknown with zero
     markers[unknown==255] = 0
+          
+def floodFill(mask):
+    im_floodfill = mask.copy()
+ 
+    # Mask used to flood filling.
+    # Notice the size needs to be 2 pixels than the image.
+    h, w = mask.shape[:2]
+    mask_new = np.zeros((h+2, w+2), np.uint8)
+ 
+    # Floodfill from point (0, 0)
+    cv2.floodFill(im_floodfill, mask_new, (0,0), 255);
+ 
+    # Invert floodfilled image
+    im_floodfill_inv = cv2.bitwise_not(im_floodfill)
+ 
+    # Combine the two images to get the foreground.
+    im_out = mask | im_floodfill_inv    
+    return im_out      
     
 def getGradientMagnitude(im):
     "Get magnitude of gradient for given image"

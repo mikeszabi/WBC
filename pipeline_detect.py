@@ -24,17 +24,17 @@ if __name__ == '__main__':
     
     param=param()
     
-    imDirs=os.listdir(param.getTestImageDirs(''))
+    imDirs=os.listdir(param.getImageDirs(''))
     print(imDirs)
-    image_dir=param.getTestImageDirs(imDirs[5])
-    image_file=os.path.join(image_dir,'49_NEU.bmp')
+    image_dir=param.getImageDirs(imDirs[0])
+    image_file=os.path.join(image_dir,'4.bmp')
     im = cv2.imread(image_file,cv2.IMREAD_COLOR)
     
-    # choose best color channel - for separating background
+# choose best color channel - for separating background
     im_onech = im[:,:,1];
     
-    # background - foreground binarization
-    # foreground : all cells
+# background - foreground binarization
+# foreground : all cells
     th, foreground_mask = cv2.threshold(im_onech,0,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
     
     # processing for dtf
@@ -92,12 +92,12 @@ if __name__ == '__main__':
          cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)[-2]
          c = max(cnts, key=cv2.contourArea)
          x,y,w,h = cv2.boundingRect(c)
-         if ((x>param.rbcR) & (x+w<im.shape[1]-param.rbcR) & 
-             (y>param.rbcR) & (y+h<im.shape[0]-param.rbcR)):
-            cv2.rectangle(im2,(x,y),(x+w,y+h),(255,255,255),2)
-            cv2.putText(im2, "#{}".format(label), (x - 10, y),cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2) 
-            if cv2.contourArea(c)>2*int(math.pi*math.pow(param.wbcRatio*param.rbcR,2)):
-                cv2.rectangle(im2,(x,y),(x+w,y+h),(0,0,255),3)
+#         if ((x>param.rbcR) & (x+w<im.shape[1]-param.rbcR) & 
+#             (y>param.rbcR) & (y+h<im.shape[0]-param.rbcR)):
+#            cv2.rectangle(im2,(x,y),(x+w,y+h),(255,255,255),2)
+#            cv2.putText(im2, "#{}".format(label), (x - 10, y),cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2) 
+#            if cv2.contourArea(c)>2*int(math.pi*math.pow(param.wbcRatio*param.rbcR,2)):
+#                cv2.rectangle(im2,(x,y),(x+w,y+h),(0,0,255),3)
     cv2.imshow('detected',im2)    
     cv2.waitKey()
     

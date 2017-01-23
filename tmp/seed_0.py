@@ -58,7 +58,7 @@ hist = tools.colorHist(im_eq,1)
 
 # ToDo: noise filtering: median, Gaussian, bilateral
 
-#im_denoise = cv2.bilateralFilter(im,11,200,200)
+#im_denoise = cv2.bilateralFilter(im_onech,11,200,200)
 #im_denoise = cv2.GaussianBlur(im_eq,(1,1),1)
 #im_denoise = cv2.medianBlur(im_eq,3)
 
