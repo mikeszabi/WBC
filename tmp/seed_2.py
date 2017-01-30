@@ -27,14 +27,17 @@ param=param()
 imDirs=os.listdir(param.getImageDirs(''))
 print(imDirs)
 image_dir=param.getImageDirs(imDirs[0])
-image_file=os.path.join(image_dir,'4.bmp')
+image_file=os.path.join(image_dir,'10.bmp')
 im = cv2.imread(image_file,cv2.IMREAD_COLOR)
 
-im=cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
+
+scale= 1280/float(max(im.shape[0],rgb.shape[1]))   
+im_small=cv2.resize(im, (int(scale*im.shape[1]),int(scale*im.shape[0])), interpolation = cv2.INTER_AREA)
+im_small=cv2.cvtColor(im_small, cv2.COLOR_BGR2RGB)
 #plt.imshow(im,hold=False)
 #hist = tools.colorHist(im,1)
 
-im_cs = cv2.cvtColor(im, cv2.COLOR_BGR2HSV)
+im_cs = cv2.cvtColor(im_small, cv2.COLOR_BGR2HSV)
 
 
 #hist = tools.colorHist(im_cs,1)
@@ -54,24 +57,24 @@ im_cs = cv2.cvtColor(im, cv2.COLOR_BGR2HSV)
 #cv2.destroyAllWindows()
 
 # choose best color channel - for separating background
-im_onech = im[:,:,1];
+#im_onech = im_small[:,:,1];
 im_onech = im_cs[:,:,1];             
              
-cC = cv2.applyColorMap(im_onech, cv2.COLORMAP_JET)     
-cv2.imshow('alma',im_onech)
-cv2.waitKey()        
-hist = tools.colorHist(im_onech,1)
-plt.imshow(im_onech)
+#cC = cv2.applyColorMap(im_onech, cv2.COLORMAP_JET)     
+     
+#hist = tools.colorHist(im_onech,1)
+#plt.imshow(im_onech)
 
 # homogen illumination correction
-clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(4,4))
-im_eq = clahe.apply(im_onech)
+#clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(4,4))
+#im_eq = clahe.apply(im_onech)
 im_eq=im_onech
-plt.imshow(im_eq)
-hist = tools.colorHist(im_eq,1)
+#plt.imshow(im_eq)
+#hist = tools.colorHist(im_eq,1)
+
 
 #im_denoise = cv2.GaussianBlur(im_eq,(4*int(param.rbcR/10)+1,4*int(param.rbcR/10)+1),4)
-im_denoise = cv2.bilateralFilter(im_eq,param.rbcR,10,param.rbcR)
+#im_denoise = cv2.bilateralFilter(im_eq,param.rbcR,10,param.rbcR)
 #http://opencvexamples.blogspot.com/2013/10/applying-bilateral-filter.html
 #plt.imshow(im_denoise)
 #hist = tools.colorHist(im_denoise,1)
@@ -79,7 +82,7 @@ im_denoise = cv2.bilateralFilter(im_eq,param.rbcR,10,param.rbcR)
 #im_denoise=im_onech
 # background - foreground binarization
 # foreground : all cells
-th, foreground_mask = cv2.threshold(im_denoise,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+th, foreground_mask = cv2.threshold(im_eq,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
 
 #tools.maskOverlay(im_onech,foreground_mask,0.5,2,1)
 
@@ -88,7 +91,7 @@ th, foreground_mask = cv2.threshold(im_denoise,0,255,cv2.THRESH_BINARY+cv2.THRES
 
 # processing for dtf
 
-r=int(1.5*param.rbcR)
+r=int(1.2*param.rbcR)
 kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(r,r))
 
 foreground_mask_open=cv2.morphologyEx(foreground_mask, cv2.MORPH_OPEN, kernel, iterations=1)
@@ -103,7 +106,7 @@ background_mask=255-foreground_mask_open
 
 output = cv2.connectedComponentsWithStats(background_mask, 8, cv2.CV_32S)
 lab=output[1]
-tools.normalize(lab,1)
+tools.normalize(lab,0)
 
 
 for i in range(output[0]):
@@ -137,7 +140,7 @@ labels_ws = morphology.watershed(-dist_transform, markers, mask=foreground_mask_
 # edge map for visualization
 mag=segmentation.find_boundaries(labels_ws).astype('uint8')*255
 
-im2=tools.maskOverlay(im,mag,0.5,1,0)
+im2=tools.maskOverlay(im_small,mag,0.5,1,1)
 # counting
 
 for label in np.unique(labels_ws):

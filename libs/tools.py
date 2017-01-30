@@ -10,7 +10,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 # colorhits
-def colorHist(im,plotFlag):
+def colorHist(im,plotFlag,ax='none'):
     color = ('r','g','b')
     histr=[]
     if len(im.shape)==2:
@@ -20,9 +20,11 @@ def colorHist(im,plotFlag):
     for i in range(nCh):
         histr.append(cv2.calcHist([im],[i],None,[256],[0,256]))
         if plotFlag:
-            plt.plot(histr[i],color = color[i])
-            plt.xlim([0,256])
-            plt.show()
+            if ax=='none':
+                ax=plt
+                ax.plot(histr[i],color = color[i])
+                ax.xlim([0,256])
+                ax.show()
     return histr
     
 def maskOverlay(im,mask,alpha,ch,plotFlag):
