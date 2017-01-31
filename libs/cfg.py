@@ -14,11 +14,12 @@ class param:
         self.rbcR=25
         self.wbcRatio=0.8
         self.project='WBC'
-        self.root_dir=r'd:\Projects'
+        #self.root_dir=r'd:\Projects'
+        self.root_dir=os.curdir
         self.data_dir=r'd:\DATA'
     
     def getTestImageDirs(self,wbc_type=''):
-        test_dir=os.path.join(self.root_dir,self.project,'data')
+        test_dir=os.path.join(self.root_dir,'data')
         image_dir=os.path.join(test_dir,'Test','WBC Types',wbc_type)
         return image_dir
     

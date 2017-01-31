@@ -5,56 +5,57 @@ Created on Tue Jan 10 20:55:57 2017
 @author: SzMike
 """
 
-import os
+# Standard imports
 import _init_path
-import numpy as np
-from skimage import morphology
-from skimage import feature
-from skimage import measure
-from skimage import segmentation
-import math
+import os
+import glob
 
 import cv2
-
+import numpy as np;
+import math
 import matplotlib.pyplot as plt
 %matplotlib qt5
-
-from params import param
+import cfg
 import tools
+ 
+##
+param=cfg.param()
 
-param=param()
-    
-imDirs=os.listdir(param.getImageDirs(''))
+imDirs=os.listdir(param.getTestImageDirs(''))
 print(imDirs)
-image_dir=param.getImageDirs(imDirs[0])
-image_file=os.path.join(image_dir,'10.bmp')
+image_dir=param.getTestImageDirs(imDirs[2])
+print(glob.glob(os.path.join(image_dir,'*.bmp')))
+image_file=os.path.join(image_dir,'1.bmp')
+
+#
 im = cv2.imread(image_file,cv2.IMREAD_COLOR)
+im_s, scale = tools.imresizeMaxDim(im, 1280)
 
+rgb = cv2.cvtColor(im_s, cv2.COLOR_BGR2RGB)
+#fo=plt.figure('rgb')
+#axo=fo.add_subplot(111)
+#axo.imshow(rgb)
 
-scale= 1280/float(max(im.shape[0],rgb.shape[1]))   
-im_small=cv2.resize(im, (int(scale*im.shape[1]),int(scale*im.shape[0])), interpolation = cv2.INTER_AREA)
-im_small=cv2.cvtColor(im_small, cv2.COLOR_BGR2RGB)
-#plt.imshow(im,hold=False)
-#hist = tools.colorHist(im,1)
-
-im_cs = cv2.cvtColor(im_small, cv2.COLOR_BGR2HSV)
-
+im_cs = cv2.cvtColor(im_s, cv2.COLOR_BGR2HSV)
+im_s2=im_cs
 
 #hist = tools.colorHist(im_cs,1)
 
 # KMEANS
-#Z = im_cs.reshape((-1,3))
-#Z = np.float32(Z)/256
-#criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
-#K = 4
-#ret,label,center=cv2.kmeans(Z,K,None,criteria,10,cv2.KMEANS_RANDOM_CENTERS)
-#center = np.uint8(center*256)
+Z = im_cs.reshape((-1,3))
+Z = np.float32(Z)/256
+Z=Z[:,1:3]
+criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 5, 1.0)
+K = 3
+ret,label,center=cv2.kmeans(Z,K,None,criteria,10,cv2.KMEANS_PP_CENTERS)
+center = np.uint8(center*256)
+print(center)
 #res = center[label.flatten()]
 #res2 = res.reshape((im.shape))
-#
-#cv2.imshow('res2',res2)
-#cv2.waitKey(0)
-#cv2.destroyAllWindows()
+maxsat=np.argmax(center[:,0])
+lab2 = label.reshape((im.shape[0:2]))
+tools.normalize(lab2,1)
+
 
 # choose best color channel - for separating background
 #im_onech = im_small[:,:,1];
@@ -66,11 +67,16 @@ im_onech = im_cs[:,:,1];
 #plt.imshow(im_onech)
 
 # homogen illumination correction
-#clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(4,4))
-#im_eq = clahe.apply(im_onech)
+clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(4,4))
+im_eq = clahe.apply(im_onech)
 im_eq=im_onech
 #plt.imshow(im_eq)
-#hist = tools.colorHist(im_eq,1)
+fh=plt.figure('h')
+ax2=fh.add_subplot(212)
+ax1=fh.add_subplot(211)
+
+hist = tools.colorHist(im_eq,1,ax2)
+hist = tools.colorHist(im_onech,1,ax1)
 
 
 #im_denoise = cv2.GaussianBlur(im_eq,(4*int(param.rbcR/10)+1,4*int(param.rbcR/10)+1),4)

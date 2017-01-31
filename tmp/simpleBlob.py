@@ -6,33 +6,36 @@ Created on Tue Jan 10 14:58:52 2017
 """
 
 # Standard imports
-import cv2
-import os
-import numpy as np;
 import _init_path
+import os
+import glob
+
+import cv2
+import numpy as np;
 import math
-
 import matplotlib.pyplot as plt
-from params import param
-import tools
 %matplotlib qt5
+import cfg
+import tools
  
-fi=plt.figure('image')
-axi=fi.add_subplot(111)
-fh=plt.figure('histogram')
-axh=fh.add_subplot(111)
+##
+param=cfg.param()
 
-param=param()
-
-imDirs=os.listdir(param.getImageDirs(''))
+imDirs=os.listdir(param.getTestImageDirs(''))
 print(imDirs)
-image_dir=param.getImageDirs(imDirs[0])
-image_file=os.path.join(image_dir,'10.bmp')
+image_dir=param.getTestImageDirs(imDirs[2])
+print(glob.glob(os.path.join(image_dir,'*.bmp')))
+image_file=os.path.join(image_dir,'1.bmp')
+
+#
 im = cv2.imread(image_file,cv2.IMREAD_COLOR)
-scale=1 #256/float(max(rgb.shape)) 
-im_s=cv2.resize(im, (int(scale*im.shape[1]),int(scale*im.shape[0])), interpolation = cv2.INTER_AREA)
+im_s, scale = tools.imresizeMaxDim(im, 640)
 
 rgb = cv2.cvtColor(im_s, cv2.COLOR_BGR2RGB)
+fo=plt.figure('rgb')
+axo=fo.add_subplot(111)
+axo.imshow(rgb)
+
 im_cs = cv2.cvtColor(im_s, cv2.COLOR_BGR2HSV)
 
 im_s2=im_cs
@@ -65,6 +68,8 @@ for i,item in enumerate(keypoints):
     y2=int(pt[i][1]+r[i])
     cv2.rectangle(im_with_keypoints,(x1,y1),(x2,y2),(255,255,255),2)
     cv2.putText(im_with_keypoints, "#{}".format(i), (x1 - 10, y1),cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2) 
+fi=plt.figure('image')
+axi=fi.add_subplot(111)
 axi.imshow(im_with_keypoints)
    
 ext=1.25
@@ -75,5 +80,10 @@ x2=int(pt[i][0]+r[i])
 y2=int(pt[i][1]+r[i])
 im_cropped=im_s2[y1:y2,x1:x2]
     
-axi.imshow(im_cropped)
-hist = tools.colorHist(im_cropped,1)
+fc=plt.figure('image')
+axc=fc.add_subplot(111)
+axc.imshow(im_cropped)
+
+fh=plt.figure('histogram')
+axh=fh.add_subplot(111)
+hist = tools.colorHist(im_cropped,1,axh)
