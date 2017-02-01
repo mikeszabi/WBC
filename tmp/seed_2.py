@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 %matplotlib qt5
 import cfg
 import tools
+import segment_kmeans
  
 ##
 param=cfg.param()
@@ -25,10 +26,12 @@ imDirs=os.listdir(param.getTestImageDirs(''))
 print(imDirs)
 image_dir=param.getTestImageDirs(imDirs[2])
 print(glob.glob(os.path.join(image_dir,'*.bmp')))
-image_file=os.path.join(image_dir,'1.bmp')
+image_file=os.path.join(image_dir,'91.bmp')
 
 #
 im = cv2.imread(image_file,cv2.IMREAD_COLOR)
+
+# rescale
 im_s, scale = tools.imresizeMaxDim(im, 1280)
 
 rgb = cv2.cvtColor(im_s, cv2.COLOR_BGR2RGB)
@@ -39,23 +42,19 @@ rgb = cv2.cvtColor(im_s, cv2.COLOR_BGR2RGB)
 im_cs = cv2.cvtColor(im_s, cv2.COLOR_BGR2HSV)
 im_s2=im_cs
 
+center, masks = segment_kmeans.segment(im_s2, plotFlag=True)
+
+maxi=np.argmax(center[:,1])
+mean_background_intensity=center[maxi,1]
+illumination_inhomogenity= segment_kmeans.inhomogen(im_cs[:,:,2], masks[:,:,2], mean_background_intensity, plotFlag=True)
+  
+
+
+# TODO: take sure foreground - fill the holes
+tools.maskOverlay(rgb,masks[:,:,3],0.5,plotFlag=True)
+
+
 #hist = tools.colorHist(im_cs,1)
-
-# KMEANS
-Z = im_cs.reshape((-1,3))
-Z = np.float32(Z)/256
-Z=Z[:,1:3]
-criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 5, 1.0)
-K = 3
-ret,label,center=cv2.kmeans(Z,K,None,criteria,10,cv2.KMEANS_PP_CENTERS)
-center = np.uint8(center*256)
-print(center)
-#res = center[label.flatten()]
-#res2 = res.reshape((im.shape))
-maxsat=np.argmax(center[:,0])
-lab2 = label.reshape((im.shape[0:2]))
-tools.normalize(lab2,1)
-
 
 # choose best color channel - for separating background
 #im_onech = im_small[:,:,1];

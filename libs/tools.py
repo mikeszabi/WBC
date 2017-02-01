@@ -8,9 +8,10 @@ Created on Wed Jan 11 11:57:09 2017
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-# colorhits
-def colorHist(im,plotFlag=False,ax='none'):
+# colorhist  - works for grayscale and color images
+def colorHist(im,plotFlag=False,ax='none',mask=None):
     color = ('r','g','b')
     histr=[]
     if len(im.shape)==2:
@@ -18,7 +19,7 @@ def colorHist(im,plotFlag=False,ax='none'):
     else:
         nCh=3    
     for i in range(nCh):
-        histr.append(cv2.calcHist([im],[i],None,[256],[0,256]))
+        histr.append(cv2.calcHist([im],[i],mask,[256],[0,256]))
         if plotFlag:
             if ax=='none':
                 fh=plt.figure('histogram')
@@ -27,9 +28,10 @@ def colorHist(im,plotFlag=False,ax='none'):
             ax.set_xlim([0,256])
     return histr
     
-def maskOverlay(im,mask,alpha,ch,sbs=False,plotFlag=False,ax='none'):
+def maskOverlay(im,mask,alpha,ch=1,sbs=False,plotFlag=False):
 # mask is 2D binary
 # image can be 1 or 3 channel
+# ch : rgb -> 012
 # sbs: side by side
     if ch>2:
         ch=1
@@ -50,19 +52,20 @@ def maskOverlay(im,mask,alpha,ch,sbs=False,plotFlag=False,ax='none'):
             both = np.hstack((im_3,im_overlay))
         else:
             both=im_overlay
-        if ax=='none':
-            fi=plt.figure('overlayed')
-            ax=fi.add_subplot(111)
+        fi=plt.figure('overlayed')
+        ax=fi.add_subplot(111)
         ax.imshow(both)
     return im_overlay
     
-def normalize(im,plotFlag=False,ax='none'):
+def normalize(im,plotFlag=False):
     im_norm=cv2.normalize(im, 0, 255, norm_type=cv2.NORM_MINMAX).astype('uint8')
     if plotFlag:
-        if ax=='none':
-            fi=plt.figure('normalized')
-            ax=fi.add_subplot(111)
-        ax.imshow(im_norm)
+        fi,axi = plt.subplots()
+        divider = make_axes_locatable(axi)
+        cax = divider.append_axes('right', size='5%', pad=0.05)
+        i=axi.imshow(im_norm,cmap='plasma')
+        fi.colorbar(i, cax=cax, orientation='vertical')
+        plt.show()
     return im_norm
           
 def floodFill(mask):
