@@ -92,13 +92,12 @@ if __name__ == '__main__':
          cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)[-2]
          c = max(cnts, key=cv2.contourArea)
          x,y,w,h = cv2.boundingRect(c)
-#         if ((x>param.rbcR) & (x+w<im.shape[1]-param.rbcR) & 
-#             (y>param.rbcR) & (y+h<im.shape[0]-param.rbcR)):
-#            cv2.rectangle(im2,(x,y),(x+w,y+h),(255,255,255),2)
-#            cv2.putText(im2, "#{}".format(label), (x - 10, y),cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2) 
-#            if cv2.contourArea(c)>2*int(math.pi*math.pow(param.wbcRatio*param.rbcR,2)):
-#                cv2.rectangle(im2,(x,y),(x+w,y+h),(0,0,255),3)
-    cv2.imshow('detected',im2)    
-    cv2.waitKey()
+         if ((x>param.rbcR) & (x+w<im.shape[1]-param.rbcR) & 
+             (y>param.rbcR) & (y+h<im.shape[0]-param.rbcR)):
+            cv2.rectangle(im2,(x,y),(x+w,y+h),(255,255,255),2)
+            cv2.putText(im2, "#{}".format(label), (x - 10, y),cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2) 
+            if cv2.contourArea(c)>2*int(math.pi*math.pow(param.wbcRatio*param.rbcR,2)):
+                cv2.rectangle(im2,(x,y),(x+w,y+h),(0,0,255),3)
+    plt.imshow(im2)
     
   

@@ -24,9 +24,9 @@ param=cfg.param()
 
 imDirs=os.listdir(param.getTestImageDirs(''))
 print(imDirs)
-image_dir=param.getTestImageDirs(imDirs[2])
+image_dir=param.getTestImageDirs(imDirs[3])
 print(glob.glob(os.path.join(image_dir,'*.bmp')))
-image_file=os.path.join(image_dir,'91.bmp')
+image_file=os.path.join(image_dir,'15.bmp')
 
 #
 im = cv2.imread(image_file,cv2.IMREAD_COLOR)
@@ -44,14 +44,41 @@ im_s2=im_cs
 
 center, masks = segment_kmeans.segment(im_s2, plotFlag=True)
 
+#    masks[:,:,0]=overexpo_mask
+#    masks[:,:,1]=sure_fg_mask
+#    masks[:,:,2]=sure_bg_mask
+#    masks[:,:,3]=unsure_mask
+
 maxi=np.argmax(center[:,1])
 mean_background_intensity=center[maxi,1]
 illumination_inhomogenity= segment_kmeans.inhomogen(im_cs[:,:,2], masks[:,:,2], mean_background_intensity, plotFlag=True)
   
 
 
-# TODO: take sure foreground - fill the holes
-tools.maskOverlay(rgb,masks[:,:,3],0.5,plotFlag=True)
+# TODO: take sure foreground - clean and fill the holes
+tools.maskOverlay(rgb,masks[:,:,1],0.5,plotFlag=True)
+
+# opening
+r=int(1.25*param.rbcR)
+kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(r,r))
+
+foreground_mask_open=cv2.morphologyEx(masks[:,:,1], cv2.MORPH_OPEN, kernel, iterations=1)
+
+tools.maskOverlay(rgb,foreground_mask_open,0.5,plotFlag=True)
+
+
+output = cv2.connectedComponentsWithStats(255-foreground_mask_open, 8, cv2.CV_32S)
+lab=output[1]
+tools.normalize(lab,plotFlag=True)
+for i in range(output[0]):
+    area=output[2][i][4]
+    if area<param.rbcR*param.rbcR/5: #cv2.isContourConvex(:
+        # ToDo and if convex
+        print(i)
+        foreground_mask_open[output[1]==i]=255
+
+
+
 
 
 #hist = tools.colorHist(im_cs,1)
@@ -100,6 +127,16 @@ r=int(1.2*param.rbcR)
 kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(r,r))
 
 foreground_mask_open=cv2.morphologyEx(foreground_mask, cv2.MORPH_OPEN, kernel, iterations=1)
+
+output = cv2.connectedComponentsWithStats(255-foreground_mask_open, 8, cv2.CV_32S)
+lab=output[1]
+tools.normalize(lab,plotFlag=True)
+for i in range(output[0]):
+    area=output[2][i][4]
+    if area<param.rbcR*param.rbcR/5: #cv2.isContourConvex(:
+        # ToDo and if convex
+        print(i)
+        foreground_mask_open[output[1]==i]=255
 
 #tools.maskOverlay(im_onech,foreground_mask_open,0.5,2,1)
 

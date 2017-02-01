@@ -88,7 +88,7 @@ def segment(hsv_orig, plotFlag=False):
     masks[:,:,2]=sure_bg_mask
     masks[:,:,3]=unsure_mask
          
-    masks = cv2.resize(masks, (hsv_orig.shape[1],hsv_orig.shape[0]), interpolation = cv2.INTER_LINEAR)
+    masks = cv2.resize(masks, (hsv_orig.shape[1],hsv_orig.shape[0]), interpolation = cv2.INTER_NEAREST)
 
     
     return center, masks
