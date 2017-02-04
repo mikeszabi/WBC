@@ -23,6 +23,7 @@ import matplotlib.pyplot as plt
 import cfg
 import tools
 import segment_kmeans
+import annotations
  
 ##
 param=cfg.param()
@@ -32,7 +33,7 @@ imDirs=os.listdir(param.getImageDirs(''))
 print(imDirs)
 image_dir=param.getImageDirs(imDirs[1])
 print(glob.glob(os.path.join(image_dir,'*.bmp')))
-image_file=os.path.join(image_dir,'67.bmp')
+image_file=os.path.join(image_dir,'94.bmp')
 
 #
 im = io.imread(image_file) # read uint8 image
@@ -135,3 +136,7 @@ fh=plt.figure('detected')
 ax=fh.add_subplot(111)
 ax.imshow(im2)
 
+head, tail=os.path.split(image_file)
+tmp = annotations.AnnotationWriter(head,tail.replace('.bmp',''), (im.shape[0],im.shape[1]))
+tmp.addShapes(shapelist)
+tmp.save()
