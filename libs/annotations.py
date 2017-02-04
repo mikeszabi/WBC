@@ -5,10 +5,6 @@ Created on Thu Feb  2 11:21:47 2017
 @author: SzMike
 """
 
-#!/usr/bin/env python
-# -*- coding: utf8 -*-
-import _init_path
-import sys
 from xml.etree import ElementTree
 from xml.etree.ElementTree import Element, SubElement
 from lxml import etree
@@ -16,12 +12,13 @@ from lxml import etree
 
 class AnnotationWriter:
 
-    def __init__(self, folder, filename, imgagesize, author='Unknown'):
+    def __init__(self, folder, filename, imagesize, author='Unknown'):
         self.folder = folder
         self.filename = filename
         self.author = author
-        self.imgagesize = imgagesize
-        self.objectlist = []
+        self.imagesize = imagesize
+        self.shapelist = []
+        self.top = None
 
     def prettify(self, elem):
         """
@@ -38,43 +35,47 @@ class AnnotationWriter:
         # Check conditions
         if self.filename is None or \
                 self.folder is None or \
-                self.imgagesize is None or \
-                len(self.objectlist) <= 0:
+                self.imagesize is None or \
+                len(self.shapelist) <= 0:
             return None
 
-        top = Element('annotation')
+        self.top = Element('annotation')
 
-        filename = SubElement(top, 'filename')
+        filename = SubElement(self.top, 'filename')
         filename.text = self.filename
 
-        folder = SubElement(top, 'folder')
+        folder = SubElement(self.top, 'folder')
         folder.text = self.folder
 
-        source = SubElement(top, 'source')
+        source = SubElement(self.top, 'source')
         author = SubElement(source, 'submittedBy')
         author.text = self.author
 
-        imagesize = SubElement(top, 'imagesize')
+        imagesize = SubElement(self.top, 'imagesize')
         nrows = SubElement(imagesize, 'nrows')
         ncols = SubElement(imagesize, 'ncols')
         nrows.text = str(self.imagesize[0])
         ncols.text = str(self.imagesize[1])
-        return top
 
-#    def addBndBox(self, xmin, ymin, xmax, ymax, name):
-#        bndbox = {'xmin': xmin, 'ymin': ymin, 'xmax': xmax, 'ymax': ymax}
-#        bndbox['name'] = name
-#        self.boxlist.append(bndbox)
-
-    def appendObjects(self, top):
-        for each_object in self.objectlist:
-            object_item = SubElement(top, 'object')
-            name = SubElement(object_item, 'name')
-            name.text = each_object[0]     
-            p_type = SubElement(object_item, 'type')
-            p_type.text = each_object[1]     
-            polygon = SubElement(object_item, 'polygon')
-            for pt in each_object[1]:
+    def addShapes(self, new_shapelist, append=True):
+        for new_shapes in new_shapelist:
+            assert isinstance(new_shapes[0],str), "Not valid shape label type"
+            assert isinstance(new_shapes[1],str), "Not valid shape polygon type"
+            #assert isinstance(new_shapes[2],list), "Not valid polygon"
+        if append:
+            self.shapelist.extend(new_shapelist)
+        else:
+            self.shapelist=new_shapelist
+            
+    def appendShapesToXML(self):
+        for each_shape in self.shapelist:
+            shape_item = SubElement(self.top, 'object')
+            name = SubElement(shape_item, 'name')
+            name.text = each_shape[0]     
+            p_type = SubElement(shape_item, 'type')
+            p_type.text = each_shape[1]     
+            polygon = SubElement(shape_item, 'polygon')
+            for pt in each_shape[2]:
                   x=pt[0]
                   point = SubElement(polygon, 'pt')
                   x_point = SubElement(point, 'x')
@@ -84,15 +85,15 @@ class AnnotationWriter:
                   y_point.text = str(y)
 
     def save(self, targetFile=None):
-        root = self.genXML()
-        self.appendObjects(root)
+        self.genXML()
+        self.appendShapesToXML()
         out_file = None
         if targetFile is None:
             out_file = open(self.filename + '.xml', 'w')
         else:
             out_file = open(targetFile, 'w')
 
-        prettifyResult = self.prettify(root)
+        prettifyResult = self.prettify(self.top)
         out_file.write(prettifyResult.decode('utf8'))
         out_file.close()
 
@@ -100,8 +101,6 @@ class AnnotationWriter:
 class AnnotationReader:
 
     def __init__(self, filepath):
-        # shapes type:
-        # [label, [(x1,y1), (x2,y2), (x3,y3), (x4,y4)], color, color]
         self.shapes = []
         self.filepath = filepath
         self.parseXML()
@@ -123,26 +122,25 @@ class AnnotationReader:
         xmltree = ElementTree.parse(self.filepath, parser=parser).getroot()
         #filename = xmltree.find('filename').text
 
-        for object_iter in xmltree.findall('object'):
-            # one polygon per object
-            polygon = object_iter.find("polygon")
-            p_type_obj=object_iter.find('type')
+        for shape_iter in xmltree.findall('object'):
+            # one polygon per shape
+            polygon = shape_iter.find("polygon")
+            p_type_obj=shape_iter.find('type')
             p_type=''
             if p_type_obj is None:
                 p_type='general'
             else:
                 p_type=p_type_obj.text
-            label = object_iter.find('name').text
+            label = shape_iter.find('name').text
             self.addShape(label, p_type, polygon)
         return True
-
+"""
 filepath=r'd:\DATA\Temp\win_20160803_11_28_42_pro.xml'
 tempParseReader = AnnotationReader(filepath)
 # print tempParseReader.getShapes()
-"""
+
 # Test
-tmp = AnnotationWriter('temp','test', (10,20,3))
-tmp.addBndBox(10,10,20,30,'chair')
-tmp.addBndBox(1,1,600,600,'car')
+tmp = AnnotationWriter('temp','test', (1920,1080))
+tmp.addShapes(tempParseReader.shapes)
 tmp.save()
 """

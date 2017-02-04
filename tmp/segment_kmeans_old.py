@@ -8,7 +8,7 @@ Created on Wed Feb  1 10:33:32 2017
 import cv2
 import numpy as np;
 import tools
-from skimage.color import rgb2hsv, rgb2gray
+from skimage.color import im_s2hsv, im_s2gray
 from sklearn.cluster import KMeans
 
 from matplotlib import pyplot as plt
@@ -19,7 +19,7 @@ def overMask(im):
     if len(im.shape)==3:
         # im_s image
         gray=np.floor(rgb2gray(im)*256)
-        gray=gray.astype('uint8')
+        gray=gray.astype('uint')
     else:
         gray=im
     overexpo_mask=np.empty(gray.shape, dtype='bool') 
@@ -32,9 +32,9 @@ def illumination_inhomogenity(im, bg_mask, vis_diag):
     if len(im.shape)==3:
         # im_s image
         gray=np.floor(rgb2gray(im)*256)
-        gray=gray.astype('uint8')
+        gray=gray.astype('uint')
     else:
-        gray=rgb2gray
+        gray=im_s2gray
     
     
     gray[bg_mask==0]=0
@@ -111,35 +111,31 @@ def segment(im, vis_diag=False):
     lab_all=np.zeros(Z.shape[0])
     lab_all.flat[Z_mask==False]=-1
     lab_all.flat[Z_mask==True]=label
-    lab_all=lab_all.reshape((hsv.shape[0:2]))
-    tools.normalize(lab_all,vis_diag=vis_diag,fig='fg_bg_labels')
-          
-    
-    # adding meaningful labels
-    lab=np.zeros(lab_all.shape).astype('uint8')
-    
-    # sure background mask - smallest saturation
-    mins=np.argmin(center[:,0]) # smallest saturation
-    lab[lab_all==mins]=1
-                 
-    # sure foreground mask -largest saturation
-    maxs=np.argmax(center[:,0]) # largest saturation
-    lab[lab_all==maxs]=3
-   
-    uns=0
-    for i in range(3):
-       if i not in (mins,maxs):
-           uns=i
-           
-    # unsure region
-    lab[lab_all==uns]=2   
-    lab = cv2.resize(lab, (im.shape[1],im.shape[0]), interpolation = cv2.INTER_NEAREST)
+    tools.normalize(lab_all.reshape((hsv.shape[0:2])),vis_diag=vis_diag,fig='fg_bg_labels')
+            
+       
+    # not overexposed mask
+    maxi=np.argmax(center[:,1])
+    sure_bg_mask = lab_all.reshape((hsv.shape[0:2]))==maxi
+    sure_bg_mask = tools.normalize(sure_bg_mask.astype('uint8'),vis_diag=vis_diag,fig='sure_bg')
 
-    # lab == 0 : overexposed
-    # lab == 1 : sure bckg
-    # lab ==2 : unsure
-    # lab == 3 : sure foreground
+    maxi=np.argmax(center[:,0])
+    sure_fg_mask = lab_all.reshape((hsv.shape[0:2]))==maxi
+    sure_fg_mask = tools.normalize(sure_fg_mask.astype('uint8'),vis_diag=vis_diag,fig='sure_fg')
 
-    return center[[mins,uns,maxs],:], lab
+    unsure_mask = np.ones(sure_fg_mask.shape)
+    unsure_mask[np.logical_or(np.logical_or(sure_fg_mask,sure_bg_mask),overexpo_mask)]=0
+    unsure_mask = tools.normalize(unsure_mask.astype('uint8'),vis_diag=vis_diag,fig='unsure')
+
+    masks=np.zeros((hsv.shape[0],hsv.shape[1],4)).astype('uint8')
+    masks[:,:,0]=overexpo_mask
+    masks[:,:,1]=sure_fg_mask
+    masks[:,:,2]=sure_bg_mask
+    masks[:,:,3]=unsure_mask
+         
+    masks = cv2.resize(masks, (hsv_orig.shape[1],hsv_orig.shape[0]), interpolation = cv2.INTER_NEAREST)
+
+    
+    return center, masks
 
 

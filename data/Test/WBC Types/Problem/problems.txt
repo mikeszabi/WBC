@@ -1,2 +1,3 @@
 49_NEU; jobb alsó sarok elmosódott
 8_NEU; állott kenet
+52_NEU; kmeans nem jól mukodik

@@ -11,7 +11,7 @@ from matplotlib import pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 # colorhist  - works for grayscale and color images
-def colorHist(im,plotFlag=False,ax='none',mask=None):
+def colorHist(im,vis_diag=False,mask=None,fig=''):
     color = ('r','g','b')
     histr=[]
     if len(im.shape)==2:
@@ -20,15 +20,14 @@ def colorHist(im,plotFlag=False,ax='none',mask=None):
         nCh=3    
     for i in range(nCh):
         histr.append(cv2.calcHist([im],[i],mask,[256],[0,256]))
-        if plotFlag:
-            if ax=='none':
-                fh=plt.figure('histogram')
-                ax=fh.add_subplot(111)
+        if vis_diag:
+            fh=plt.figure(fig+'_histogram')
+            ax=fh.add_subplot(111)
             ax.plot(histr[i],color = color[i])
             ax.set_xlim([0,256])
     return histr
     
-def maskOverlay(im,mask,alpha,ch=1,sbs=False,plotFlag=False):
+def maskOverlay(im,mask,alpha,ch=1,sbs=False,vis_diag=False,fig=''):
 # mask is 2D binary
 # image can be 1 or 3 channel
 # ch : rgb -> 012
@@ -47,23 +46,24 @@ def maskOverlay(im,mask,alpha,ch=1,sbs=False,plotFlag=False):
         
     im_overlay=cv2.addWeighted(mask_tmp,alpha,im_3,1-alpha,0) 
     
-    if plotFlag:
+    if vis_diag:
         if sbs:
             both = np.hstack((im_3,im_overlay))
         else:
             both=im_overlay
-        fi=plt.figure('overlayed')
+        fi=plt.figure(fig+'_overlayed')
         ax=fi.add_subplot(111)
         ax.imshow(both)
     return im_overlay
     
-def normalize(im,plotFlag=False):
+def normalize(im,vis_diag=False,fig=''):
     im_norm=cv2.normalize(im, 0, 255, norm_type=cv2.NORM_MINMAX).astype('uint8')
-    if plotFlag:
-        fi,axi = plt.subplots()
+    if vis_diag:
+        fi=plt.figure(fig+'_normalized')
+        axi=fi.add_subplot(111)
         divider = make_axes_locatable(axi)
         cax = divider.append_axes('right', size='5%', pad=0.05)
-        i=axi.imshow(im_norm,cmap='plasma')
+        i=axi.imshow(im_norm,cmap='jet')
         fi.colorbar(i, cax=cax, orientation='vertical')
         plt.show()
     return im_norm
