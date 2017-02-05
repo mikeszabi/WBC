@@ -69,7 +69,7 @@ for i in range(output[0]):
     area=max(output[2][i][4],1)
     label_mask=output[1]==i
     unsure_sum=unsure_mask.flat[label_mask.flatten()].sum()/255
-    if area<param.rbcR*param.rbcR*np.pi and unsure_sum/area>0.9: #cv2.isContourConvex(:
+    if area<param.rbcR*param.rbcR*np.pi and unsure_sum/area>=0: #cv2.isContourConvex(:
         # ToDo and if convex
         print(i)
         sure_fg_mask[output[1]==i]=255
@@ -91,7 +91,7 @@ dist_transform = cv2.distanceTransform(fg_mask_open,cv2.DIST_L2,5)
 dist_transform[dist_transform<param.rbcR*0.5]=0
     
 # watershed
-r=int(0.5*param.rbcR)
+r=int(0.75*param.rbcR)
 kernel = np.ones((r,r),np.uint8)
 
 local_maxi = feature.peak_local_max(dist_transform, indices=False, 

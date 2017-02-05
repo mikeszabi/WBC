@@ -5,10 +5,15 @@ Created on Wed Feb  1 10:33:32 2017
 @author: SzMike
 """
 
+import warnings
 import cv2
 import numpy as np;
 import tools
+from skimage import img_as_ubyte
 from skimage.color import rgb2hsv, rgb2gray
+from skimage.restoration import inpaint
+from skimage.morphology import disk
+from skimage.filters.rank import median
 from sklearn.cluster import KMeans
 
 from matplotlib import pyplot as plt
@@ -18,8 +23,9 @@ import random
 def overMask(im):
     if len(im.shape)==3:
         # im_s image
-        gray=np.floor(rgb2gray(im)*256)
-        gray=gray.astype('uint8')
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            gray=img_as_ubyte(rgb2gray(im))
     else:
         gray=im
     overexpo_mask=np.empty(gray.shape, dtype='bool') 
@@ -29,23 +35,28 @@ def overMask(im):
 
 
 def illumination_inhomogenity(im, bg_mask, vis_diag):
+    # using inpainting techniques
+    assert im.dtype=='uint8', 'Not uint8 type'
+    
     if len(im.shape)==3:
         # im_s image
-        gray=np.floor(rgb2gray(im)*256)
-        gray=gray.astype('uint8')
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            gray=rgb2gray(im)
     else:
-        gray=rgb2gray
+        gray=im
     
     
     gray[bg_mask==0]=0
-    gray_s, scale=tools.imresizeMaxDim(gray, 64, interpolation = cv2.INTER_NEAREST)
-    mask=gray_s==0
-    mask=255*(mask.astype('uint8'))
-    inpainted = cv2.inpaint(gray_s, mask, 11, cv2.INPAINT_NS)
-    inpainted=inpainted[3:-3,3:-3]
-    inpainted = cv2.medianBlur(inpainted,9)
+    gray_s, scale=tools.imresizeMaxDim(gray, 64, interpolation = 0)
+    with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            mask=img_as_ubyte(gray_s==0)
+    inpainted =  inpaint.inpaint_biharmonic(gray_s, mask, multichannel=False)
+    inpainted = median(inpainted, disk(15))
     tools.normalize(inpainted,vis_diag,fig='expositionmap')
-    return cv2.resize(inpainted, (gray.shape), interpolation = cv2.INTER_LINEAR)
+# TODO: show the unnormalized inhomogenity on full 0-255 range    
+    return cv2.resize(inpainted, (gray.shape), interpolation = 1)
 
     
 def segment(im, vis_diag=False):
@@ -57,11 +68,11 @@ def segment(im, vis_diag=False):
     # TODO: use parameters from cfg
     
     # create small image
-    im_s, scale = tools.imresizeMaxDim(im, 256)
+    im_s, scale = tools.imresizeMaxDim(im, 256, interpolation=1)
     
-    hsv = np.floor(rgb2hsv(im_s)*256)
-    hsv = hsv.astype('uint8')            
-    # TODO: 256 as parameter
+    with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            hsv = img_as_ubyte(rgb2hsv(im_s))
 
     # overexpo mask
     overexpo_mask=overMask(hsv[:,:,2])
@@ -133,7 +144,7 @@ def segment(im, vis_diag=False):
            
     # unsure region
     lab[lab_all==uns]=2   
-    lab = cv2.resize(lab, (im.shape[1],im.shape[0]), interpolation = cv2.INTER_NEAREST)
+    lab = cv2.resize(lab, (im.shape[1],im.shape[0]), interpolation = 0)
 
     # lab == 0 : overexposed
     # lab == 1 : sure bckg

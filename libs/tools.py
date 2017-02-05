@@ -5,9 +5,13 @@ Created on Wed Jan 11 11:57:09 2017
 @author: SzMike
 """
 
+import warnings
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
+from skimage.transform import rescale
+from skimage import img_as_ubyte
+from skimage import filters
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 # colorhist  - works for grayscale and color images
@@ -32,6 +36,7 @@ def maskOverlay(im,mask,alpha,ch=1,sbs=False,vis_diag=False,fig=''):
 # image can be 1 or 3 channel
 # ch : rgb -> 012
 # sbs: side by side
+# http://stackoverflow.com/questions/9193603/applying-a-coloured-overlay-to-an-image-in-either-pil-or-imagemagik
     if ch>2:
         ch=1
 
@@ -87,23 +92,21 @@ def floodFill(mask):
     return im_out      
     
 def getGradientMagnitude(im):
-    "Get magnitude of gradient for given image"
-    ddepth = cv2.CV_32F
-    dx = cv2.Sobel(im, ddepth, 1, 0)
-    dy = cv2.Sobel(im, ddepth, 0, 1)
-    dxabs = cv2.convertScaleAbs(dx)
-    dyabs = cv2.convertScaleAbs(dy)
-    mag = cv2.addWeighted(dxabs, 0.5, dyabs, 0.5, 0)
+    #Get magnitude of gradient for given image"
+    assert len(im.shape)==2, "Not 2D image"
+    mag = filters.scharr(im)
     return mag
 
-def imresize(img, scale, interpolation = cv2.INTER_LINEAR):
-    return cv2.resize(img, (0,0), fx=scale, fy=scale, interpolation=interpolation)
+def imresize(img, scale, interpolation = 1):
+    return rescale(img, scale, order=interpolation)
 
 
-def imresizeMaxDim(img, maxDim, boUpscale = False, interpolation = cv2.INTER_LINEAR):
+def imresizeMaxDim(img, maxDim, boUpscale = False, interpolation = 1):
     scale = 1.0 * maxDim / max(img.shape[:2])
     if scale < 1  or boUpscale:
-        img = imresize(img, scale, interpolation)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            img = img_as_ubyte(imresize(img, scale, interpolation))
     else:
         scale = 1.0
     return img, scale
