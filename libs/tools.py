@@ -9,10 +9,15 @@ import warnings
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
-from skimage.transform import rescale
-from skimage import img_as_ubyte
-from skimage import filters
+from skimage.transform import rescale, resize
+from skimage import filters, img_as_ubyte, img_as_float
+from skimage.restoration import inpaint
+from skimage.morphology import disk
+from skimage.filters.rank import median
+from skimage.filters import gaussian
+from skimage.color import rgb2gray
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+import tools
 
 # colorhist  - works for grayscale and color images
 def colorHist(im,vis_diag=False,mask=None,fig=''):
@@ -97,16 +102,56 @@ def getGradientMagnitude(im):
     mag = filters.scharr(im)
     return mag
 
-def imresize(img, scale, interpolation = 1):
-    return rescale(img, scale, order=interpolation)
 
-
-def imresizeMaxDim(img, maxDim, boUpscale = False, interpolation = 1):
-    scale = 1.0 * maxDim / max(img.shape[:2])
+def imRescaleMaxDim(im, maxDim, boUpscale = False, interpolation = 1):
+    scale = 1.0 * maxDim / max(im.shape[:2])
     if scale < 1  or boUpscale:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            img = img_as_ubyte(imresize(img, scale, interpolation))
+            im = img_as_ubyte(rescale(im, scale, order=interpolation))
     else:
         scale = 1.0
-    return img, scale
+    return im, scale
+
+def illumination_inhomogenity(hsv, bg_mask, vis_diag):
+    # using inpainting techniques
+    assert hsv.dtype=='uint8', 'Not uint8 type'
+    
+    gray=hsv[:,:,2].copy()  
+    
+    gray[bg_mask==0]=0
+    gray_s, scale=tools.imRescaleMaxDim(gray, 64, interpolation = 0)
+    
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        mask=img_as_ubyte(gray_s==0)
+    inpainted =  inpaint.inpaint_biharmonic(gray_s, mask, multichannel=False)
+    inpainted = gaussian(inpainted, 15)
+    if vis_diag:
+        fi=plt.figure('inhomogen illumination')
+        axi=fi.add_subplot(111)
+        divider = make_axes_locatable(axi)
+        cax = divider.append_axes('right', size='5%', pad=0.05)
+        i=axi.imshow(inpainted,cmap='jet')
+        fi.colorbar(i, cax=cax, orientation='vertical')
+        plt.show()  
+    hsv_corrected=img_as_float(hsv)
+    with warnings.catch_warnings():
+        hsv_corrected[:,:,2]=hsv_corrected[:,:,2]+1-resize(inpainted, (gray.shape), order = 1)
+        hsv_corrected[hsv_corrected>1]=1
+        hsv_corrected=img_as_ubyte(hsv_corrected)
+    hsv_corrected[:,:,2]=tools.normalize(hsv_corrected[:,:,2],vis_diag=vis_diag)
+    return hsv_corrected
+
+def overMask(im):
+    if len(im.shape)==3:
+        # im_s image
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            gray=img_as_ubyte(rgb2gray(im))
+    else:
+        gray=im
+    overexpo_mask=np.empty(gray.shape, dtype='bool') 
+    overexpo_mask=gray==255
+    overexpo_mask=255*overexpo_mask.astype(dtype=np.uint8) 
+    return overexpo_mask
