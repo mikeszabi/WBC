@@ -9,18 +9,14 @@ import warnings
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
-from skimage.transform import rescale, resize
-from skimage import filters, img_as_ubyte, img_as_float
-from skimage.restoration import inpaint
-from skimage.morphology import disk
-from skimage.filters.rank import median
-from skimage.filters import gaussian
-from skimage.color import rgb2gray
+from skimage.transform import rescale
+from skimage.exposure import cumulative_distribution
+from skimage import filters, img_as_ubyte
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-import tools
 
 # colorhist  - works for grayscale and color images
 def colorHist(im,vis_diag=False,mask=None,fig=''):
+    assert im.ndim==3, 'Not 3channel image'
     color = ('r','g','b')
     histr=[]
     if len(im.shape)==2:
@@ -28,7 +24,12 @@ def colorHist(im,vis_diag=False,mask=None,fig=''):
     else:
         nCh=3    
     for i in range(nCh):
-        histr.append(cv2.calcHist([im],[i],mask,[256],[0,256]))
+        if mask==None:
+            im_masked=im[:,:,i]
+        else:
+            im_masked=im[:,:,i].flat[mask.flatten()>0]
+        h, b=np.histogram(im_masked,bins=range(255))
+        histr.append(h)
         if vis_diag:
             fh=plt.figure(fig+'_histogram')
             ax=fh.add_subplot(111)
@@ -67,7 +68,15 @@ def maskOverlay(im,mask,alpha,ch=1,sbs=False,vis_diag=False,fig=''):
     return im_overlay
     
 def normalize(im,vis_diag=False,fig=''):
-    im_norm=cv2.normalize(im, 0, 255, norm_type=cv2.NORM_MINMAX).astype('uint8')
+    assert im.ndim==2, 'Not 1channel image'
+    cdf, bins=cumulative_distribution(im, nbins=256)
+    minI=bins[np.argwhere(cdf>0.01)[0,0]]
+    maxI=bins[np.argwhere(cdf>0.99)[0,0]]
+    im_norm=im.copy()
+    im_norm[im_norm<minI]=minI
+    im_norm[im_norm>maxI]=maxI
+    im_norm=(im_norm-minI)/(maxI-minI)
+    im_norm=(255*im_norm).astype('uint8')       
     if vis_diag:
         fi=plt.figure(fig+'_normalized')
         axi=fi.add_subplot(111)
@@ -112,46 +121,3 @@ def imRescaleMaxDim(im, maxDim, boUpscale = False, interpolation = 1):
     else:
         scale = 1.0
     return im, scale
-
-def illumination_inhomogenity(hsv, bg_mask, vis_diag):
-    # using inpainting techniques
-    assert hsv.dtype=='uint8', 'Not uint8 type'
-    
-    gray=hsv[:,:,2].copy()  
-    
-    gray[bg_mask==0]=0
-    gray_s, scale=tools.imRescaleMaxDim(gray, 64, interpolation = 0)
-    
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        mask=img_as_ubyte(gray_s==0)
-    inpainted =  inpaint.inpaint_biharmonic(gray_s, mask, multichannel=False)
-    inpainted = gaussian(inpainted, 15)
-    if vis_diag:
-        fi=plt.figure('inhomogen illumination')
-        axi=fi.add_subplot(111)
-        divider = make_axes_locatable(axi)
-        cax = divider.append_axes('right', size='5%', pad=0.05)
-        i=axi.imshow(inpainted,cmap='jet')
-        fi.colorbar(i, cax=cax, orientation='vertical')
-        plt.show()  
-    hsv_corrected=img_as_float(hsv)
-    with warnings.catch_warnings():
-        hsv_corrected[:,:,2]=hsv_corrected[:,:,2]+1-resize(inpainted, (gray.shape), order = 1)
-        hsv_corrected[hsv_corrected>1]=1
-        hsv_corrected=img_as_ubyte(hsv_corrected)
-    hsv_corrected[:,:,2]=tools.normalize(hsv_corrected[:,:,2],vis_diag=vis_diag)
-    return hsv_corrected
-
-def overMask(im):
-    if len(im.shape)==3:
-        # im_s image
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            gray=img_as_ubyte(rgb2gray(im))
-    else:
-        gray=im
-    overexpo_mask=np.empty(gray.shape, dtype='bool') 
-    overexpo_mask=gray==255
-    overexpo_mask=255*overexpo_mask.astype(dtype=np.uint8) 
-    return overexpo_mask

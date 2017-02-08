@@ -12,7 +12,6 @@ import warnings
 import cv2
 import skimage.io as io
 import numpy as np;
-import math
 from skimage.transform import resize
 from skimage import morphology
 from skimage import feature
@@ -21,16 +20,20 @@ from skimage import segmentation
 from skimage.color import rgb2hsv, hsv2rgb
 from skimage import img_as_ubyte
 from skimage.filters import threshold_otsu
-from skimage.morphology import remove_small_objects, remove_small_holes
+from skimage.morphology import binary_opening, binary_dilation, disk, \
+                                medial_axis, \
+                                remove_small_objects, remove_small_holes
 
 import matplotlib.pyplot as plt
-#%matplotlib qt5
+%matplotlib qt5
 
 import _init_path
 import cfg
-import tools
+import imtools
+import diagnostics
 import segmentations
 import annotations
+import random
  
 ##
 param=cfg.param()
@@ -40,105 +43,118 @@ imDirs=os.listdir(param.getImageDirs(''))
 print(imDirs)
 image_dir=param.getImageDirs(imDirs[1])
 print(glob.glob(os.path.join(image_dir,'*.bmp')))
-image_file=os.path.join(image_dir,'66.bmp')
+image_file=os.path.join(image_dir,'420.bmp')
 
-#
+# reading image
 im = io.imread(image_file) # read uint8 image
-
-# rescale if needed
-#im, scale = tools.imresizeMaxDim(im, max(im.shape))
 
 if vis_diag:
     fo=plt.figure('original image')
     axo=fo.add_subplot(111)
-    axo.imshow(im)
+    axo.imshow(im)              
+              
+# diagnose image
+diag=diagnostics.diagnostics(im,image_file,vis_diag=True)
 
-# create small hsv image
-with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        hsv_0 = img_as_ubyte(rgb2hsv(im))
-        hsv, scale = tools.imRescaleMaxDim(hsv_0, 512, interpolation=2)
+"""
+inhomogen illumination correction
+"""
 
-# overexpo mask
-mask_o=tools.overMask(hsv[:,:,2])
-
-# foreground-background segmentation
-cent, lab = segmentations.segment_fg_bg_green(hsv, mask_o, vis_diag=True)
+# create sure background with n=4 kmeans, on sv channel
+cent, label_mask_small = segmentations.segment_fg_bg_sv_kmeans4(diag.hsv_small, 'k-means++', vis_diag=True)
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
-    label = img_as_ubyte(resize(lab,( im.shape[0],im.shape[1]), order = 0))
+    label_mask = img_as_ubyte(resize(label_mask_small,( im.shape[0],im.shape[1]), order = 0))
 
-# lab == 0 : overexposed
-# lab == 1 : sure bckg
-# lab ==2 : unsure
-# lab == 3 : sure foreground
-
-mask_bg= np.logical_or(label == 0, label == 1)
-#cent, lab = segmentations.segment_cell(hsv, mask_bg, vis_diag=True)
+mask_bg_sure= np.logical_or(label_mask == 0, label_mask == 1)
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
-    hsv_corrected= tools.illumination_inhomogenity(hsv_0, mask_bg, vis_diag=True)
+    hsv_corrected= diagnostics.illumination_inhomogenity(diag.hsv, mask_bg_sure, vis_diag=True)
     im_corrected=img_as_ubyte(hsv2rgb(hsv_corrected))
-    
-# green channel
-mag=tools.getGradientMagnitude(im_corrected[:,:,1]).astype('float64')
-#mag_u=tools.normalize(img_as_ubyte(mag),vis_diag=True)
-    
-threshold_global_otsu = threshold_otsu(mag)
-edges = mag >= threshold_global_otsu
-remove_small_objects(edges, min_size=6*param.rbcR, in_place=True)
-tools.maskOverlay(im,255*edges,0.5,vis_diag=True,fig='sure_fg_mask')
+if vis_diag:
+    fo=plt.figure('intensity corrected image')
+    axo=fo.add_subplot(111)
+    axo.imshow(im_corrected)
 
-# TODO: take sure foreground - clean and fill the holes
-sure_fg_mask=((label==3)*255).astype('uint8')
-tools.maskOverlay(im,sure_fg_mask,0.5,vis_diag=True,fig='sure_fg_mask')
+# TODO: store inhomogenity measure for illumination (pct)
+# TODO: check background distance transform and coverage (area) - should not be too large, too small
 
-#unsure_mask=((label==2)*255).astype('uint8')
+"""
+Creating edges
+"""
+# create edges on ch_maxvar
+edge_mag=imtools.getGradientMagnitude(im_corrected[:,:,diag.measures['ch_maxvar']]).astype('float64')
+if vis_diag:
+    tmp=imtools.normalize(img_as_ubyte(edge_mag),vis_diag=True)
+##    
+##threshold_global_otsu = threshold_otsu(edge_mag)
+##edges = edge_mag >= threshold_global_otsu
+#edges = feature.canny(hsv_corrected[:,:,diag.measures['ch_maxvar']], sigma=3)
+#remove_small_objects(edges, min_size=np.pi*param.rbcR, in_place=True, connectivity=2)
+#    
+    
+"""
+background-foreground segmentation
+"""                   
+#cent_2, label_mask_2 = segmentations.segment_fg_bg_onechannel_binary(im_corrected, mask_over, diag.measures['ch_maxvar'], vis_diag=True)   
+hsv_resize, scale=imtools.imRescaleMaxDim(hsv_corrected,512,interpolation = 1)
+
+cent_2, label_mask_2_resize = segmentations.segment_fg_bg_sv_kmeans4(hsv_resize, cent, vis_diag=True)   
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    label_mask_2 = img_as_ubyte(resize(label_mask_2_resize,( im.shape[0],im.shape[1]), order = 0))
+
+# create foreground mask
+sure_fg_mask=((label_mask_2==3)*255).astype('uint8')
+imtools.maskOverlay(im,sure_fg_mask,0.5,vis_diag=True,fig='sure_fg_mask')
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
-    rbc_mask=img_as_ubyte(remove_small_holes(sure_fg_mask, min_size=param.rbcR*param.rbcR*np.pi, connectivity=2))
-
-tools.maskOverlay(im,rbc_mask,0.5,vis_diag=True,fig='sure_fg_mask_filled')
+    rbc_mask=img_as_ubyte(remove_small_holes(sure_fg_mask, min_size=param.rbcR*param.rbcR*np.pi, connectivity=4))
 
 # opening
-r=int(param.rbcR)
-kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(r,r))
+fg_mask_open=255*binary_opening(rbc_mask,disk(param.rbcR/4)).astype('uint8')
+im_2=imtools.maskOverlay(im,fg_mask_open,0.5,vis_diag=True,fig='sure_fg_mask_filled')
 
-fg_mask_open=cv2.morphologyEx(rbc_mask, cv2.MORPH_OPEN, kernel, iterations=1)
+im_2=imtools.maskOverlay(im,fg_mask_open,0.5,vis_diag=True)
+imtools.maskOverlay(im_2,tmp,0.5,ch=0,vis_diag=True)
 
-im_2=tools.maskOverlay(im,fg_mask_open,0.5,vis_diag=True)
-tools.maskOverlay(im_2,255*edges,0.5,ch=0,vis_diag=True)
+#TODO: loop over all connected components and investigate
+#TODO: find median hue for RBC - check connected components for WBC
 
  # use dtf to find markers for watershed
-fg_mask_open=255*(np.logical_and(fg_mask_open,np.logical_not(edges))).astype('uint8')
-tools.maskOverlay(im,fg_mask_open,0.5,vis_diag=True) 
+#fg_mask_open_with_edges=255*(np.logical_and(fg_mask_open,np.logical_not(edges))).astype('uint8')
  
-dist_transform = cv2.distanceTransform(fg_mask_open,cv2.DIST_L2,5)
-
-# remove small blobs
-dist_transform[dist_transform<param.rbcR*0.5]=0
-    
-# watershed
-r=int(0.5*param.rbcR)
-kernel = np.ones((r,r),np.uint8)
-
-local_maxi = feature.peak_local_max(dist_transform, indices=False, 
-                                    footprint=np.ones((int(param.rbcR), int(param.rbcR))), labels=fg_mask_open)
+skel, dtf = medial_axis(fg_mask_open, return_distance=True)
+dtf.flat[(fg_mask_open>0).flatten()]+=np.random.random(((fg_mask_open>0).sum()))
+# watershed seeds
+local_maxi = feature.peak_local_max(dtf, indices=False, 
+                                    threshold_abs=0.25*param.rbcR,
+                                    footprint=np.ones((int(2*param.rbcR), int(2*param.rbcR))), 
+                                    labels=fg_mask_open.copy())
+# Problem - similar maximas are left
 # remove noisy maximas
-local_maxi_dilate=cv2.dilate(local_maxi.astype('uint8')*255,kernel, iterations = 1)
-markers = measure.label(local_maxi_dilate)
-
+markers = measure.label(local_maxi)
+imtools.maskOverlay(im_2,255*binary_dilation((markers>0),disk(3)),0.5,ch=0,vis_diag=True,fig='markers') 
+ 
+#TODO: count markers
 
 # watershed on dtf
-labels_ws = morphology.watershed(-dist_transform, markers, mask=fg_mask_open)
+labels_ws = morphology.watershed(-dtf, markers, mask=fg_mask_open)
 
 # edge map for visualization
 mag=segmentation.find_boundaries(labels_ws).astype('uint8')*255
 
-im2=tools.maskOverlay(im,mag,0.5,ch=1,sbs=True,vis_diag=True,fig='contours')
+im2=imtools.maskOverlay(im,mag,0.5,ch=1,sbs=False,vis_diag=True,fig='contours')
 # counting
+
+
+
+"""
+Save shapes
+"""
+
 
 # ToDo: merge groups
 shapelist=[]
@@ -148,7 +164,7 @@ for label in np.unique(labels_ws):
      if label == 0:
          continue
   
-     mask = np.zeros(mask_bg.shape, dtype="uint8")
+     mask = np.zeros(labels_ws.shape, dtype="uint8")
      mask[labels_ws == label] = 255
      cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)[-2]
      c = max(cnts, key=cv2.contourArea)

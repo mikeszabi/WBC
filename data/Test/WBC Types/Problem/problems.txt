@@ -1,3 +1,4 @@
 49_NEU; jobb alsó sarok elmosódott
 8_NEU; állott kenet
-52_NEU; kmeans nem jól mukodik
+52_NEU; sötét, kicsi kontrasztú kép, nem egyenletes megvilágítás
+45_MO; inverz szaturáció az foreground-unsure esetében
