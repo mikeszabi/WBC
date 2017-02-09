@@ -6,6 +6,8 @@ Created on Tue Feb  7 17:13:50 2017
 """
 
 import warnings
+import csv
+import os
 import numpy as np
 from matplotlib import pyplot as plt
 from skimage import img_as_float, img_as_ubyte
@@ -19,8 +21,9 @@ import cfg
 
 
 class diagnostics:
-    def __init__(self,im,filename,vis_diag=False,write=False):
+    def __init__(self,im,image_file,vis_diag=False,write=False):
         param=cfg.param()
+        self.image_file=image_file
         assert len(im.shape)==3, 'Not 3 dimensional data'
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -87,6 +90,19 @@ class diagnostics:
         overexpo_mask=intensity_im==255
         overexpo_mask=255*overexpo_mask.astype(dtype=np.uint8) 
         return overexpo_mask
+    
+    def writeDiagnostics(self, savedir=None):
+        if savedir is None:
+            savedir=os.path.dirname(self.image_file)
+        head, tail = str.split(os.path.basename(self.image_file),'.')
+        diag_image_file=os.path.join(savedir,head+'_diagnostics.csv')
+        out = open(os.path.join(diag_image_file), 'wt')
+        w = csv.DictWriter(out, delimiter=';', fieldnames=['measures','values'])
+        w.writeheader()
+        for key, value in self.measures.items():
+            w.writerow({'measures' : key, 'values' : value})
+        out.close()
+
 
 def illumination_inhomogenity(hsv, bg_mask, vis_diag):
     # using inpainting techniques

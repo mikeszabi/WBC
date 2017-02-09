@@ -27,3 +27,7 @@ class param:
     def getImageDirs(self,dir_name=''):
         image_dir=os.path.join(self.data_dir,dir_name)
         return image_dir
+    
+    def getSaveDir(self,dir_name=''):
+        save_dir=os.path.join(self.root_dir,'diag')
+        return save_dir

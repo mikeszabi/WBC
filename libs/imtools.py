@@ -6,7 +6,6 @@ Created on Wed Jan 11 11:57:09 2017
 """
 
 import warnings
-import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 from skimage.transform import rescale
@@ -24,11 +23,11 @@ def colorHist(im,vis_diag=False,mask=None,fig=''):
     else:
         nCh=3    
     for i in range(nCh):
-        if mask==None:
+        if mask is None:
             im_masked=im[:,:,i]
         else:
             im_masked=im[:,:,i].flat[mask.flatten()>0]
-        h, b=np.histogram(im_masked,bins=range(255))
+        h, b=np.histogram(im_masked,bins=range(255),density=True)
         histr.append(h)
         if vis_diag:
             fh=plt.figure(fig+'_histogram')
@@ -50,12 +49,12 @@ def maskOverlay(im,mask,alpha,ch=1,sbs=False,vis_diag=False,fig=''):
     mask_tmp.fill(0)
     mask_tmp[:,:,ch]=mask
     
-    if len(im.shape)==2:
+    if im.ndim==2:
         im_3=np.matlib.repeat(np.expand_dims(im,2),3,2)
     else:
         im_3=im
         
-    im_overlay=cv2.addWeighted(mask_tmp,alpha,im_3,1-alpha,0) 
+    im_overlay=np.add(alpha*mask_tmp,(1-alpha)*im_3).astype(im.dtype)
     
     if vis_diag:
         if sbs:
@@ -85,25 +84,7 @@ def normalize(im,vis_diag=False,fig=''):
         i=axi.imshow(im_norm,cmap='jet')
         fi.colorbar(i, cax=cax, orientation='vertical')
         plt.show()
-    return im_norm
-          
-def floodFill(mask):
-    im_floodfill = mask.copy()
- 
-    # Mask used to flood filling.
-    # Notice the size needs to be 2 pixels than the image.
-    h, w = mask.shape[:2]
-    mask_new = np.zeros((h+2, w+2), np.uint8)
- 
-    # Floodfill from point (0, 0)
-    cv2.floodFill(im_floodfill, mask_new, (0,0), 255);
- 
-    # Invert floodfilled image
-    im_floodfill_inv = cv2.bitwise_not(im_floodfill)
- 
-    # Combine the two images to get the foreground.
-    im_out = mask | im_floodfill_inv    
-    return im_out      
+    return im_norm            
     
 def getGradientMagnitude(im):
     #Get magnitude of gradient for given image"
@@ -121,3 +102,32 @@ def imRescaleMaxDim(im, maxDim, boUpscale = False, interpolation = 1):
     else:
         scale = 1.0
     return im, scale
+
+def plotShapes(im, shapelist):
+    fs=plt.figure('shapes image')
+    axs=fs.add_subplot(111)
+    axs.imshow(im)  
+    for shape in shapelist:
+        pts=shape[2]
+        axs.plot(pts[:,1], pts[:, 0], linewidth=3, color='g')
+
+def histogram_similarity(hist, reference_hist):
+   
+    # Compute Chi squared distance metric: sum((X-Y)^2 / (X+Y));
+    # a measure of distance between histograms
+    X = hist
+    Y = reference_hist
+
+    num = (X - Y) ** 2
+    denom = X + Y
+    denom[denom == 0] = np.infty
+    frac = num / denom
+
+    chi_sqr = 0.5 * np.sum(frac, axis=0)
+
+    # Generate a similarity measure. It needs to be low when distance is high
+    # and high when distance is low; taking the reciprocal will do this.
+    # Chi squared will always be >= 0, add small value to prevent divide by 0.
+    similarity = 1 / (chi_sqr + 1.0e-4)
+
+    return similarity
