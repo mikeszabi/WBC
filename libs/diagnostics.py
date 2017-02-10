@@ -15,6 +15,7 @@ from skimage.transform import resize
 from skimage.restoration import inpaint
 from skimage.filters import gaussian
 from skimage import color
+import skimage.io as io
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import imtools
 import cfg
@@ -104,6 +105,13 @@ class diagnostics:
         for key, value in self.measures.items():
             w.writerow({'measures' : key, 'values' : value})
         out.close()
+        
+    def saveDiagImage(self, im, diag_id, savedir=None):
+        if savedir is None:
+            savedir=os.path.dirname(self.image_file)
+        head, tail = str.split(os.path.basename(self.image_file),'.')
+        diag_image_file=os.path.join(savedir,head+diag_id+'.jpg')
+        io.imsave(diag_image_file,im)
 
 
 def illumination_inhomogenity(csp, bg_mask, vis_diag):

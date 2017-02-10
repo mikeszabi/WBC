@@ -85,12 +85,7 @@ def segment_fg_bg_sv_kmeans4(csp, init_centers, vis_diag=False):
 
     return center, lab
 
-def segment_cell_hs_kmeans3(csp, mask, cut_channel=1, vis_diag=False):  
-    rgb_range=((330/360*255,30/360*255), (75/360*255,135/360*255), (180/360*255,270/360*255))
-
-    cut = np.mean(rgb_range[cut_channel])
-    
-    
+def segment_cell_hs_kmeans3(csp, mask, vis_diag=False):  
     Z = csp.reshape((-1,3))
     Z = np.float32(Z)
                   
@@ -99,9 +94,8 @@ def segment_cell_hs_kmeans3(csp, mask, cut_channel=1, vis_diag=False):
     Z_mask=Z_mask.flatten()
 
     # select all channels
-    Z=Z[:,0:2]
-    Z[Z[:,0]<cut,0]=Z[Z[:,0]<cut,0]+cut
     Z_1=Z[Z_mask>0,0:2]
+    Z=Z[:,0:2]
 
     kmeans = KMeans(n_clusters=3, random_state=0).fit(Z_1)
     
@@ -161,11 +155,54 @@ def segment_cell_hs_kmeans3(csp, mask, cut_channel=1, vis_diag=False):
   
     return center, lab
 
+def segment_wbc_3D(csp, mask, vis_diag=False):  
+    Z = csp.reshape((-1,3))
+    Z = np.float32(Z)
+                  
+    # mask with overexpo
+    Z_mask=mask.reshape((-1,1))>0
+    Z_mask=Z_mask.flatten()
+
+    # select all channels
+    Z_1=Z[Z_mask>0,0:3]
+    Z=Z[:,0:3]
+
+    kmeans = KMeans(n_clusters=3, random_state=0).fit(Z_1)
+    
+    # TODO: initialize centers from histogram peaks
+    center = kmeans.cluster_centers_
+    label = kmeans.labels_
+    #print(center)
+    
+    colors = cm.jet(np.linspace(1/(label.max()+1), 1, label.max()+1))
+
+    if vis_diag:
+        rs=random.sample(range(0, Z_1.shape[0]-1), 1000)
+        Z_rs=Z_1[rs,:]
+        fig = plt.figure("scatter_cell", figsize=(4, 3))
+        plt.clf()
+        ax = fig.add_subplot(111)
+        plt.cla()
+        label_rs = label[rs]
+        ax.set_xlabel('Hue')
+        ax.set_ylabel('Saturation')
+        for i, c in enumerate(center):
+            ax.scatter(Z_rs[label_rs==i, 0], Z_rs[label_rs==i, 1], color=colors[i,:])
+            ax.plot(c[0], c[1], 'o',markerfacecolor='k', markeredgecolor='k', markersize=15)
+
+        plt.show()
+
+    lab_all=np.zeros(Z.shape[0])
+    lab_all[Z_mask==0]=-1
+    lab_all.flat[Z_mask>0]=label
+    imtools.normalize(lab_all.reshape((csp.shape[0:2])),vis_diag=vis_diag,fig='wbc_labels')
+            
+    return center, lab_all
 
 def segment_wbc_hue(csp, mask, cut_channel=1, vis_diag=False):  
-    rgb_range=((330/360*255,30/360*255), (75/360*255,135/360*255), (180/360*255,270/360*255))
+    brg_range=((180/360*255,270/360*255),(330/360*255,30/360*255),(75/360*255,135/360*255))
 
-    cut = np.mean(rgb_range[cut_channel])
+    cut = np.mean(brg_range[cut_channel])
     
     Z = csp.reshape((-1,3))
     Z = np.float32(Z)
