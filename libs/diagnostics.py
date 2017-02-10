@@ -37,8 +37,8 @@ class diagnostics:
             imtools.maskOverlay(im,self.mask_over,0.5,vis_diag=True,fig='overexposition mask')
         
         self.measures={}
-        self.imhists=imtools.colorHist(im,mask=255-self.mask_over,vis_diag=vis_diag,fig='rgb')
-        self.csphists=imtools.colorHist(self.csp,mask=255-self.mask_over,vis_diag=vis_diag,fig='csp')
+        self.imhists=imtools.colorHist(im,mask=255-self.mask_over,vis_diag=False,fig='rgb')
+        self.csphists=imtools.colorHist(self.csp,mask=255-self.mask_over,vis_diag=False,fig='csp')
         
         self.cumh_rgb, siqr_rgb = self.semi_IQR(self.imhists) # Semi-Interquartile Range
         self.cumh_csp, siqr_csp = self.semi_IQR(self.csphists) # Semi-Interquartile Range

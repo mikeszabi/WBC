@@ -35,13 +35,13 @@ def segment_fg_bg_sv_kmeans4(csp, init_centers, vis_diag=False):
     center = np.uint8(kmeans.cluster_centers_*256)
     label = kmeans.labels_
     #print(center)
-    colors = cm.jet(np.linspace(0, 1, label.max()+1))
+    colors = cm.jet(np.linspace(1/(label.max()+1), 1, label.max()+1))
 
     if vis_diag:
         rs=random.sample(range(0, Z.shape[0]-1), 1000)
         Z_rs=Z[rs,:]
 
-        fig = plt.figure("scatter", figsize=(4, 3))
+        fig = plt.figure("scatter_bg", figsize=(4, 3))
         plt.clf()
         ax = fig.add_subplot(111)
         plt.cla()
@@ -86,7 +86,7 @@ def segment_fg_bg_sv_kmeans4(csp, init_centers, vis_diag=False):
     return center, lab
 
 def segment_cell_hs_kmeans3(csp, mask, vis_diag=False):  
-    Z = csp.reshape((-1,3))/255
+    Z = csp.reshape((-1,3))
     Z = np.float32(Z)
                   
     # mask with overexpo
@@ -103,13 +103,21 @@ def segment_cell_hs_kmeans3(csp, mask, vis_diag=False):
     center = kmeans.cluster_centers_
     label = kmeans.labels_
     #print(center)
+    
+    Q95=np.zeros(center.shape[0])
+    for l in np.unique(label):
+        sats=Z_1[label==l,1]
+        hist, bin_edges = np.histogram(sats, range(256), normed=True)
+        cdf = np.cumsum(hist)
+        Q95[l]=np.argwhere(cdf>0.95)[0,0]
+        
     colors = cm.jet(np.linspace(1/(label.max()+1), 1, label.max()+1))
 
 
     if vis_diag:
         rs=random.sample(range(0, Z_1.shape[0]-1), 1000)
         Z_rs=Z_1[rs,:]
-        fig = plt.figure("scatter", figsize=(4, 3))
+        fig = plt.figure("scatter_cell", figsize=(4, 3))
         plt.clf()
         ax = fig.add_subplot(111)
         plt.cla()
@@ -132,30 +140,20 @@ def segment_cell_hs_kmeans3(csp, mask, vis_diag=False):
     # adding meaningful labels
     lab=np.zeros(lab_ok.shape).astype('uint8')
     
-    #ind_hue=np.argsort(center[:,0])
-    ind_sat=np.argsort(center[:,1])
-   
+    ind=np.argsort(center[:,0])
+    #ind=np.argsort(Q95)
+    #ind=np.argsort(center[:,1])
     sure_ind=[]
-    # wbc and cell membrane - largest saturation
-    lab[lab_ok==ind_sat[-1]]=1
-    sure_ind.append(ind_sat[-1])
-                 
-    # sure foreground mask -largest saturation
-    #if ind_sat[-1] not in sure_ind:
-    #if ind_val[ind_sat[-1]]>ind_val[ind_sat[-2]]:        
-    lab[lab_ok==ind_sat[-2]]=3
-    sure_ind.append(ind_sat[-2])
-    #else:
-    lab[lab_ok==ind_sat[-3]]=2
-    sure_ind.append(ind_sat[-3])
-       
-    # lab == 0 : background
-    # lab == 1 : rbc cell membrane, wbc
-    # lab ==2 : unknown 
-    # lab == 3 : rbc
-
-     
-    return center, lab
+    # wbc and cell membrane - largest index
+    
+    lab[lab_ok==ind[-1]]=3
+    sure_ind.append(ind[-1])
+    lab[lab_ok==ind[-2]]=1
+    sure_ind.append(ind[-2])
+    lab[lab_ok==ind[-3]]=2
+    sure_ind.append(ind[-3])
+  
+    return Q95, center, lab
 
 def segment_wbc_2(csp, mask, vis_diag=False):  
     Z = csp.reshape((-1,3))
