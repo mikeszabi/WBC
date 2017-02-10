@@ -17,16 +17,18 @@ from mpl_toolkits.mplot3d import Axes3D
 from sklearn.cluster import KMeans
 from sklearn import datasets
 
+hsv=csp_corrected
+
 Z = hsv.reshape((-1,3))
 Z = np.float32(Z)/256
               
 # mask with overexpo
-Z_mask=overexpo_mask.reshape((-1,1))==0
+Z_mask=mask.reshape((-1,1))==0
 Z_mask=Z_mask.flatten()
 
 # 3d clustering
 Z_1=Z[Z_mask,0:3]
-rs=random.sample(range(0, Z.shape[0]-1), 1000)
+rs=random.sample(range(0, Z_1.shape[0]-1), 1000)
 Z_1=Z_1[rs,:]
 
 

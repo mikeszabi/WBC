@@ -67,6 +67,7 @@ def maskOverlay(im,mask,alpha,ch=1,sbs=False,vis_diag=False,fig=''):
     return im_overlay
     
 def normalize(im,vis_diag=False,fig=''):
+    # normalize intensity image
     assert im.ndim==2, 'Not 1channel image'
     cdf, bins=cumulative_distribution(im, nbins=256)
     minI=bins[np.argwhere(cdf>0.01)[0,0]]

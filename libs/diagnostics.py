@@ -14,7 +14,7 @@ from skimage import img_as_float, img_as_ubyte
 from skimage.transform import resize
 from skimage.restoration import inpaint
 from skimage.filters import gaussian
-from skimage.color import rgb2hsv
+from skimage import color
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import imtools
 import cfg
@@ -27,9 +27,10 @@ class diagnostics:
         assert len(im.shape)==3, 'Not 3 dimensional data'
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            self.hsv = img_as_ubyte(rgb2hsv(im))
-            self.hsv_small, scale = imtools.imRescaleMaxDim(self.hsv, param.small_size, interpolation=2)
-            self.intensity_im=self.hsv[:,:,2]
+            self.csp = img_as_ubyte(color.rgb2hsv(im))
+            l_dim=2 # luminosity dimension
+            self.csp_small, scale = imtools.imRescaleMaxDim(self.csp, param.small_size, interpolation=0)
+            self.intensity_im=self.csp[:,:,l_dim]
             self.mask_over=self.overMask(self.intensity_im)
             self.mask_over_small, scale=imtools.imRescaleMaxDim(self.mask_over, param.small_size, interpolation=0)
         if vis_diag:
@@ -37,15 +38,16 @@ class diagnostics:
         
         self.measures={}
         self.imhists=imtools.colorHist(im,mask=255-self.mask_over,vis_diag=vis_diag,fig='rgb')
-        self.hsvhists=imtools.colorHist(self.hsv,mask=255-self.mask_over,vis_diag=vis_diag,fig='hsv')
+        self.csphists=imtools.colorHist(self.csp,mask=255-self.mask_over,vis_diag=vis_diag,fig='csp')
         
         self.cumh_rgb, siqr_rgb = self.semi_IQR(self.imhists) # Semi-Interquartile Range
-        self.cumh_hsv, siqr_hsv = self.semi_IQR(self.hsvhists) # Semi-Interquartile Range
+        self.cumh_csp, siqr_csp = self.semi_IQR(self.csphists) # Semi-Interquartile Range
 
-        minI=np.argwhere(self.cumh_hsv[2]>0.05)[0,0]
-        maxI=np.argwhere(self.cumh_hsv[2]>0.95)[0,0]
+        minI=np.argwhere(self.cumh_csp[l_dim]>0.05)[0,0]
+        maxI=np.argwhere(self.cumh_csp[l_dim]>0.95)[0,0]
                                                                           
         self.measures['siqr_rgb']=siqr_rgb
+        self.measures['siqr_csp']=siqr_csp
         self.measures['ch_maxvar']=np.argmax(self.measures['siqr_rgb']) # channel with maximal variability
         self.measures['maxI']=maxI.astype('float64')
         self.measures['minI']=minI.astype('float64')
@@ -53,7 +55,7 @@ class diagnostics:
         self.measures['overexpo_pct']=(self.mask_over>0).sum()/self.mask_over.size
         self.measures['global_entropy']=np.NaN # global homogenity
         self.measures['global_var']=np.NaN # global variance
-        self.measures['saturation_pcts']=np.NaN # Todo: hsv
+        self.measures['saturation_pcts']=np.NaN # Todo: csp
         
         self.error_list=[]
         self.checks()
@@ -104,11 +106,11 @@ class diagnostics:
         out.close()
 
 
-def illumination_inhomogenity(hsv, bg_mask, vis_diag):
+def illumination_inhomogenity(csp, bg_mask, vis_diag):
     # using inpainting techniques
-    assert hsv.dtype=='uint8', 'Not uint8 type'
+    assert csp.dtype=='uint8', 'Not uint8 type'
     
-    gray=hsv[:,:,2].copy()  
+    gray=csp[:,:,2].copy()  
     
     gray[bg_mask==0]=0
     gray_s, scale=imtools.imRescaleMaxDim(gray, 64, interpolation = 0)
@@ -117,7 +119,7 @@ def illumination_inhomogenity(hsv, bg_mask, vis_diag):
         warnings.simplefilter("ignore")
         mask=img_as_ubyte(gray_s==0)
     inpainted =  inpaint.inpaint_biharmonic(gray_s, mask, multichannel=False)
-    inpainted = gaussian(inpainted, 15)
+    inpainted = gaussian(inpainted, 15, mode='reflect')
     if vis_diag:
         fi=plt.figure('inhomogen illumination')
         axi=fi.add_subplot(111)
@@ -126,11 +128,11 @@ def illumination_inhomogenity(hsv, bg_mask, vis_diag):
         i=axi.imshow(inpainted,cmap='jet')
         fi.colorbar(i, cax=cax, orientation='vertical')
         plt.show()  
-    hsv_corrected=img_as_float(hsv)
+    csp_corrected=img_as_float(csp)
     with warnings.catch_warnings():
-        hsv_corrected[:,:,2]=hsv_corrected[:,:,2]+1-resize(inpainted, (gray.shape), order = 1)
-        hsv_corrected[hsv_corrected>1]=1
-        hsv_corrected=img_as_ubyte(hsv_corrected)
-    hsv_corrected[:,:,2]=imtools.normalize(hsv_corrected[:,:,2],vis_diag=False)
-    return hsv_corrected
+        csp_corrected[:,:,2]=csp_corrected[:,:,2]+1-resize(inpainted, (gray.shape), order = 1)
+        csp_corrected[csp_corrected>1]=1
+        csp_corrected=img_as_ubyte(csp_corrected)
+    #csp_corrected[:,:,2]=imtools.normalize(csp_corrected[:,:,2],vis_diag=False)
+    return csp_corrected
 

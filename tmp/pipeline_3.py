@@ -35,12 +35,12 @@ import random
 param=cfg.param()
 vis_diag=False
 
-imDirs=os.listdir(param.getImageDirs(''))
+imDirs=os.listdir(param.getTestImageDirs(''))
 print(imDirs)
-i_imDirs=1
-image_dir=param.getImageDirs(imDirs[i_imDirs])
+i_imDirs=5
+image_dir=param.getTestImageDirs(imDirs[i_imDirs])
 print(glob.glob(os.path.join(image_dir,'*.bmp')))
-image_file=os.path.join(image_dir,'71.bmp')
+image_file=os.path.join(image_dir,'45_MO.bmp')
 save_dir=param.getSaveDir(imDirs[i_imDirs])
 
 # reading image
@@ -82,11 +82,11 @@ if vis_diag:
 Creating edges
 """
 # create edges on ch_maxvar
-edge_mag=imtools.getGradientMagnitude(im_corrected[:,:,diag.measures['ch_maxvar']]).astype('float64')
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore")
-    tmp=imtools.normalize(img_as_ubyte(edge_mag),vis_diag=vis_diag,fig='edges')
-##    
+#edge_mag=imtools.getGradientMagnitude(im_corrected[:,:,diag.measures['ch_maxvar']]).astype('float64')
+#with warnings.catch_warnings():
+#    warnings.simplefilter("ignore")
+#    tmp=imtools.normalize(img_as_ubyte(edge_mag),vis_diag=vis_diag,fig='edges')
+###    
 ##threshold_global_otsu = threshold_otsu(edge_mag)
 ##edges = edge_mag >= threshold_global_otsu
 #edges = feature.canny(csp_corrected[:,:,diag.measures['ch_maxvar']], sigma=3)
@@ -100,20 +100,16 @@ Foreground segmentation
 csp_resize, scale=imtools.imRescaleMaxDim(csp_corrected,512,interpolation = 1)
 
 cent_2, label_mask_2_resize = segmentations.segment_fg_bg_sv_kmeans4(csp_resize, cent, vis_diag=vis_diag)   
-mask=label_mask_2_resize==1
-cent_3, label_mask_3_resize = segmentations.segment_fg_bg_sv_kmeans4(csp_resize, cent, vis_diag=vis_diag)   
+mask=np.logical_not(label_mask_2_resize==1) # sure background mask
+cent_3, label_mask_3_resize = segmentations.segment_cell_hs_kmeans3(csp_resize, mask=mask, vis_diag=vis_diag)   
 
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
-    label_mask_2 = img_as_ubyte(resize(label_mask_2_resize,( im.shape[0],im.shape[1]), order = 0))
-
-# 
-
-
+    label_mask_3 = img_as_ubyte(resize(label_mask_3_resize,(im.shape[0],im.shape[1]), order = 0))
 
 # create foreground mask
-mask_fg_sure=((label_mask_2==3)*255).astype('uint8')
+mask_fg_sure=((label_mask_3==3)*255).astype('uint8')
 imtools.maskOverlay(im,mask_fg_sure,0.5,vis_diag=vis_diag,fig='mask_fg_sure')
 
 # remove holes from foreground mask
@@ -123,17 +119,14 @@ with warnings.catch_warnings():
     mask_fg_sure_filled=img_as_ubyte(morphology.remove_small_holes(mask_fg_sure, min_size=param.rbcR*param.rbcR*np.pi, connectivity=4))
 
 # opening
-mask_fg_clear=255*morphology.binary_opening(mask_fg_sure_filled,morphology.disk(param.rbcR/2)).astype('uint8')
-im_2=imtools.maskOverlay(im,mask_fg_clear,0.5,vis_diag=vis_diag,fig='mask_fg_sure_clear')
-
-im_2=imtools.maskOverlay(im,mask_fg_clear,0.5,vis_diag=vis_diag)
-imtools.maskOverlay(im_2,tmp,0.5,ch=0,vis_diag=vis_diag)
+mask_fg_clear=255*morphology.binary_opening(mask_fg_sure_filled,morphology.disk(param.rbcR/4)).astype('uint8')
+imtools.maskOverlay(im,mask_fg_clear,0.5,vis_diag=vis_diag,fig='mask_fg_sure_clear')
 
 #TODO: loop over all connected components and investigate
 #TODO: find median hue for RBC - check connected components for WBC
 
 """
-Find cell markers - using dtf and local maximas
+Find RBC markers - using dtf and local maximas
 """
 
 # use dtf to find markers for watershed 
@@ -170,66 +163,49 @@ cnts = measure.find_contours(mask_fg_clear, 0.5)
 regions = measure.regionprops(labels_ws)
 #http://scikit-image.org/docs/dev/api/skimage.measure.html#skimage.measure.regionprops
 
-
-#for n, contour in enumerate(cnts):
-#    axc.plot(contour[:,1], contour[:, 0], linewidth=2)
-#    axc.text(np.mean(contour[:,1]), np.mean(contour[:, 0]),str(n), bbox=dict(facecolor='white', alpha=0.5))
-
-# TEST
-l=imtools.normalize(label_mask_2,vis_diag=vis_diag,fig='kmeans_result')
-rbcSize=param.rbcR*param.rbcR*np.pi
-sat_maxclust=cent_2[:,0].max()
-sat=diag.csp[:,:,1]
-h_0=imtools.colorHist(csp_corrected,mask=mask_bg_sure==0,vis_diag=True,fig='all')
-
-sat_cumh_0=np.add.accumulate(h_0[1])
-Q3=np.argwhere(sat_cumh_0>0.95)[0,0]
-
-mask=mask_bg_sure==0
-mask=255*np.logical_and(csp_corrected[:,:,1]>sat_maxclust-80,np.logical_and(csp_corrected[:,:,0]>160,csp_corrected[:,:,0]<220))
-imtools.maskOverlay(im,255*mask,0.5,ch=1,vis_diag='True')
-
-ss=[]
-inds=[]
-
-for iBlob in range(len(cnts)):
-    # TODO: check if not close to image border (mean_contour)
-    # TODO: check if saturation histogram
-    contour=cnts[iBlob]
-    mask_blob=np.zeros((im.shape[0],im.shape[1]),'uint8')
-    #contour=cnts[iBlob]
-    rr,cc=skimage.draw.polygon(contour[:,0], contour[:, 1], shape=None)
-    if rr.size>100:
-        mask_blob[rr,cc]=255
-        reg = measure.regionprops(mask_blob)
-        r=reg[0]
-        nEstimated=r.area/rbcSize
-       #print(r.convex_area/r.area)
-       #print(nEstimated)
-        nMarkers=(local_maxi[mask_blob>0]>0).sum()
-       #print(nMarkers)
-        h=imtools.colorHist(csp_corrected,mask=mask_blob,vis_diag=False,fig=str(iBlob))
-        # check distribution for heavy tail
-        sat_cumh=np.add.accumulate(h[1])
-        D=sat_cumh[Q3]
-#        s=imtools.histogram_similarity(h_0[1],h[1])
-#        pixs=sat[mask_blob>0].flatten()
-#        D,p=stats.ks_2samp(pixs,pixs_0)
-        if D<(0.95*(nEstimated-1)+0.5)/nEstimated:
-            ss.append(D)
-            inds.append(iBlob)
-       #print(s)
-       #print(sat_cumh[sat_maxclust]) # wbc if this is small
-#imtools.maskOverlay(l,mask_blob,0.5,ch=1,sbs=False,vis_diag=True,fig='blob')
-
-
 fc=plt.figure('wbc image')
 axc=fc.add_subplot(111)
-axc.imshow(im)     
-for k,i in enumerate(inds):
-    contour=cnts[i]
+axc.imshow(im)   
+for n, contour in enumerate(cnts):
     axc.plot(contour[:,1], contour[:, 0], linewidth=2)
-    axc.text(np.mean(contour[:,1]), np.mean(contour[:, 0]),np.array_str(np.ceil(100*ss[k])/100), bbox=dict(facecolor='white', alpha=0.5))
+    axc.text(np.mean(contour[:,1]), np.mean(contour[:, 0]),str(n), bbox=dict(facecolor='white', alpha=0.5))
+
+
+#for iBlob in range(len(cnts)):
+#    # TODO: check if not close to image border (mean_contour)
+#    # TODO: check if saturation histogram
+#    contour=cnts[iBlob]
+#    mask_blob=np.zeros((im.shape[0],im.shape[1]),'uint8')
+#    #contour=cnts[iBlob]
+#    rr,cc=skimage.draw.polygon(contour[:,0], contour[:, 1], shape=None)
+#    if rr.size>100:
+#        mask_blob[rr,cc]=255
+#        reg = measure.regionprops(mask_blob)
+#        r=reg[0]
+#        nEstimated=r.area/rbcSize
+#       #print(r.convex_area/r.area)
+#       #print(nEstimated)
+#        nMarkers=(local_maxi[mask_blob>0]>0).sum()
+#       #print(nMarkers)
+##       
+"""
+WBC
+"""
+# create foreground mask
+mask_wbc_sure=((label_mask_3==1)*255).astype('uint8')
+imtools.maskOverlay(im,mask_wbc_sure,0.5,vis_diag=vis_diag,fig='mask_fg_sure')
+
+# remove holes from foreground mask
+
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    mask_fg_sure_filled=img_as_ubyte(morphology.remove_small_holes(mask_fg_sure, min_size=param.rbcR*param.rbcR*np.pi, connectivity=4))
+
+# opening
+mask_wbc_clear=255*morphology.binary_opening(mask_wbc_sure,morphology.disk(param.rbcR/2)).astype('uint8')
+im_2=imtools.maskOverlay(im,mask_wbc_clear,0.5,ch=2,vis_diag=vis_diag,fig='mask_wbc')
+
+
 
    
 """
