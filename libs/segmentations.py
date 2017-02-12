@@ -11,7 +11,6 @@ from sklearn.cluster import KMeans
 
 from matplotlib import pyplot as plt
 import matplotlib.cm as cm
-from mpl_toolkits.mplot3d import Axes3D
 
 import random
 

@@ -14,7 +14,6 @@ from skimage.transform import resize
 from skimage import morphology
 from skimage import feature
 from skimage import measure
-from skimage import img_as_ubyte
 import matplotlib.pyplot as plt
 
 import _init_path
@@ -30,7 +29,7 @@ plt.close('all')
  
 ##
 param=cfg.param()
-vis_diag=False
+vis_diag=True
 
 imDirs=os.listdir(param.getTestImageDirs(''))
 print(imDirs)
@@ -49,7 +48,6 @@ for image_file in image_list_indir:
     # reading image
     
 #if __name__ == '__main__':
-    image_file=image_list_indir[1]
     print(image_file)
     im = io.imread(image_file) # read uint8 image
     
@@ -73,13 +71,13 @@ for image_file in image_list_indir:
     cent_2, label_mask_2_resize = segmentations.segment_fg_bg_sv_kmeans4(hsv_resize, diag.cent_init, vis_diag=vis_diag)   
     
     # create segmentation for RBC detection based on hs
-    sat_min=np.sort(cent_2[:,0])[-4]
-    mask=np.logical_and(label_mask_2_resize==3,hsv_resize[:,:,1]>sat_min)
+    sat_min=np.sort(cent_2[:,0])[-4]/2
+    mask=np.logical_and(np.logical_not(label_mask_2_resize==1),hsv_resize[:,:,1]>sat_min)
     cent_3, label_mask_3_resize = segmentations.segment_cell_hs_kmeans3(hsv_resize, mask=mask, cut_channel=1, vis_diag=vis_diag)   
     
     # create segmentation for WBC detection based on hue
     sat_min=np.sort(cent_2[:,0])[-1]*1.2
-    mask=np.logical_and(np.logical_or(label_mask_3_resize==1,label_mask_2_resize==2),hsv_resize[:,:,1]>sat_min)
+    mask=np.logical_and(label_mask_3_resize==1,hsv_resize[:,:,1]>sat_min)
     cent_4, label_mask_4_resize = segmentations.segment_wbc_hue(hsv_resize, cut_channel=1, mask=mask, vis_diag=False)   
     
     with warnings.catch_warnings():
@@ -98,7 +96,7 @@ for image_file in image_list_indir:
     
     # remove holes from foreground mask
     mask_fg_sure_filled=morphology.remove_small_holes(mask_fg_sure, 
-                                                      min_size=param.rbcR*param.rbcR*np.pi/4, 
+                                                      min_size=param.rbcR*param.rbcR*np.pi, 
                                                       connectivity=1)
     
     # opening
@@ -118,7 +116,7 @@ for image_file in image_list_indir:
                                         footprint=np.ones((int(1.25*param.rbcR), int(1.25*param.rbcR))), 
                                         labels=mask_fg_clear.copy())
     markers = measure.label(local_maxi)
-    im_markers=imtools.maskOverlay(im,255*morphology.binary_dilation((markers>0),morphology.disk(3)),0.6,ch=0,vis_diag=vis_diag,fig='markers') 
+    im_markers=imtools.maskOverlay(im,255*morphology.binary_dilation((markers>0),morphology.disk(3)),0.6,ch=0,vis_diag=True,fig='markers') 
      
     #TODO: count markers
     

@@ -14,41 +14,49 @@ from skimage import img_as_float, img_as_ubyte
 from skimage.transform import resize
 from skimage.restoration import inpaint
 from skimage.filters import gaussian
+from skimage import morphology
 from skimage import color
 import skimage.io as io
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+
 import imtools
 import cfg
+import segmentations
 
 
 class diagnostics:
     def __init__(self,im,image_file,vis_diag=False,write=False):
+        assert im.ndim==3, 'Not 3 channel image'
+        assert im.dtype=='uint8', 'Not byte image'     
         param=cfg.param()
+        self.vis_diag=vis_diag
         self.image_file=image_file
-        assert len(im.shape)==3, 'Not 3 dimensional data'
+        self.image_shape=(im.shape[0],im.shape[1])
+        
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            self.csp = img_as_ubyte(color.rgb2hsv(im))
-            l_dim=2 # luminosity dimension
-            self.csp_small, scale = imtools.imRescaleMaxDim(self.csp, param.small_size, interpolation=0)
-            self.intensity_im=self.csp[:,:,l_dim]
-            self.mask_over=self.overMask(self.intensity_im)
-            self.mask_over_small, scale=imtools.imRescaleMaxDim(self.mask_over, param.small_size, interpolation=0)
-        if vis_diag:
-            imtools.maskOverlay(im,self.mask_over,0.5,vis_diag=True,fig='overexposition mask')
+            self.hsv = img_as_ubyte(color.rgb2hsv(im))
+            l_dim=2 # luminosity dimension in hsv           
+            self.hsv_small, scale = imtools.imRescaleMaxDim(self.hsv, param.small_size, interpolation=0)            
+            self.intensity_im=self.hsv[:,:,l_dim]            
+            self.mask_over=self.overMask(self.intensity_im)            
+            self.cent_init, bckg_inhomogenity_pct, self.hsv_corrected, self.im_corrected=self.illumination_correction()
+        
+        if self.mask_over.sum()>0:
+            imtools.maskOverlay(im,self.mask_over,0.5,vis_diag=self.vis_diag,fig='overexposition mask')
         
         self.measures={}
         self.imhists=imtools.colorHist(im,mask=255-self.mask_over,vis_diag=False,fig='rgb')
-        self.csphists=imtools.colorHist(self.csp,mask=255-self.mask_over,vis_diag=False,fig='csp')
+        self.hsvhists=imtools.colorHist(self.hsv,mask=255-self.mask_over,vis_diag=False,fig='hsv')
         
         self.cumh_rgb, siqr_rgb = self.semi_IQR(self.imhists) # Semi-Interquartile Range
-        self.cumh_csp, siqr_csp = self.semi_IQR(self.csphists) # Semi-Interquartile Range
+        self.cumh_hsv, siqr_hsv = self.semi_IQR(self.hsvhists) # Semi-Interquartile Range
 
-        minI=np.argwhere(self.cumh_csp[l_dim]>0.05)[0,0]
-        maxI=np.argwhere(self.cumh_csp[l_dim]>0.95)[0,0]
+        minI=np.argwhere(self.cumh_hsv[l_dim]>0.05)[0,0]
+        maxI=np.argwhere(self.cumh_hsv[l_dim]>0.95)[0,0]
                                                                           
         self.measures['siqr_rgb']=siqr_rgb
-        self.measures['siqr_csp']=siqr_csp
+        self.measures['siqr_hsv']=siqr_hsv
         self.measures['ch_maxvar']=np.argmax(self.measures['siqr_rgb']) # channel with maximal variability
         self.measures['maxI']=maxI.astype('float64')
         self.measures['minI']=minI.astype('float64')
@@ -56,7 +64,8 @@ class diagnostics:
         self.measures['overexpo_pct']=(self.mask_over>0).sum()/self.mask_over.size
         self.measures['global_entropy']=np.NaN # global homogenity
         self.measures['global_var']=np.NaN # global variance
-        self.measures['saturation_pcts']=np.NaN # Todo: csp
+        self.measures['saturation_pcts']=np.NaN # Todo: hsv
+        self.measures['bckg_inhomogenity_pct']=bckg_inhomogenity_pct
         
         self.error_list=[]
         self.checks()
@@ -94,6 +103,22 @@ class diagnostics:
         overexpo_mask=255*overexpo_mask.astype(dtype=np.uint8) 
         return overexpo_mask
     
+    def illumination_correction(self):
+        cent_init, label_mask = segmentations.segment_fg_bg_sv_kmeans4(self.hsv_small, 'k-means++')
+        mask_bg_sure=morphology.binary_erosion(label_mask == 1,morphology.disk(2));
+        mask_bg_sure= img_as_ubyte(resize(mask_bg_sure,self.image_shape,order=0))
+# TODO: check background distance transform and coverage (area) - should not be too large, too small
+
+        bckg_inhomogenity_pct, hsv_corrected=illumination_inhomogenity_hsv(self.hsv, mask_bg_sure, vis_diag=self.vis_diag)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            im_corrected=img_as_ubyte(color.hsv2rgb(hsv_corrected))
+            if self.vis_diag:
+                f=plt.figure('intensity corrected image')
+                ax=f.add_subplot(111)
+                ax.imshow(im_corrected)
+        return cent_init, bckg_inhomogenity_pct, hsv_corrected, im_corrected
+    
     def writeDiagnostics(self, savedir=None):
         if savedir is None:
             savedir=os.path.dirname(self.image_file)
@@ -114,13 +139,14 @@ class diagnostics:
         io.imsave(diag_image_file,im)
 
 
-def illumination_inhomogenity(csp, bg_mask, vis_diag):
+def illumination_inhomogenity_hsv(hsv, mask_bg_sure, vis_diag=False):
     # using inpainting techniques
-    assert csp.dtype=='uint8', 'Not uint8 type'
+    assert hsv.dtype=='uint8', 'Not uint8 type'
+    assert hsv.ndim==3, 'Not 3channel image'
     
-    gray=csp[:,:,2].copy()  
+    gray=hsv[:,:,2].copy()  
     
-    gray[bg_mask==0]=0
+    gray[mask_bg_sure==0]=0
     gray_s, scale=imtools.imRescaleMaxDim(gray, 64, interpolation = 0)
     
     with warnings.catch_warnings():
@@ -128,6 +154,7 @@ def illumination_inhomogenity(csp, bg_mask, vis_diag):
         mask=img_as_ubyte(gray_s==0)
     inpainted =  inpaint.inpaint_biharmonic(gray_s, mask, multichannel=False)
     inpainted = gaussian(inpainted, 15, mode='reflect')
+    bckg_inhomogenity_pct=1-inpainted.min()/max(inpainted.max(),0)
     if vis_diag:
         fi=plt.figure('inhomogen illumination')
         axi=fi.add_subplot(111)
@@ -136,11 +163,11 @@ def illumination_inhomogenity(csp, bg_mask, vis_diag):
         i=axi.imshow(inpainted,cmap='jet')
         fi.colorbar(i, cax=cax, orientation='vertical')
         plt.show()  
-    csp_corrected=img_as_float(csp)
     with warnings.catch_warnings():
-        csp_corrected[:,:,2]=csp_corrected[:,:,2]+1-resize(inpainted, (gray.shape), order = 1)
-        csp_corrected[csp_corrected>1]=1
-        csp_corrected=img_as_ubyte(csp_corrected)
-    #csp_corrected[:,:,2]=imtools.normalize(csp_corrected[:,:,2],vis_diag=False)
-    return csp_corrected
+        hsv_corrected=img_as_float(hsv)
+        hsv_corrected[:,:,2]=hsv_corrected[:,:,2]+1-resize(inpainted, (gray.shape), order = 1)
+        hsv_corrected[hsv_corrected>1]=1
+        hsv_corrected=img_as_ubyte(hsv_corrected)
+    #hsv_corrected[:,:,2]=imtools.normalize(hsv_corrected[:,:,2],vis_diag=False)
+    return bckg_inhomogenity_pct, hsv_corrected
 
