@@ -12,7 +12,8 @@ class param:
         self.pixelSize=1 # in microns
         self.magnification=1
         self.rbcR=25
-        self.wbcRatio=0.8
+        self.cellFillAreaPct=0.25
+        self.cellOpeningPct=0.33
         self.small_size=128
         self.project='WBC'
         #self.root_dir=r'd:\Projects'

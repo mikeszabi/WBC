@@ -36,7 +36,7 @@ def colorHist(im,vis_diag=False,mask=None,fig=''):
             ax.set_xlim([0,256])
     return histr
     
-def maskOverlay(im,mask,alpha,ch=1,sbs=False,vis_diag=False,fig=''):
+def maskOverlay(im,mask,alpha,ch=1,sbs=False,ax=None, vis_diag=False,fig=''):
 # mask is 2D binary
 # image can be 1 or 3 channel
 # ch : rgb -> 012
@@ -61,12 +61,13 @@ def maskOverlay(im,mask,alpha,ch=1,sbs=False,vis_diag=False,fig=''):
             both = np.hstack((im_3,im_overlay))
         else:
             both=im_overlay
-        fi=plt.figure(fig+'_overlayed')
-        ax=fi.add_subplot(111)
+        if ax is None:
+            fi=plt.figure(fig+'_overlayed')
+            ax=fi.add_subplot(111)
         ax.imshow(both)
     return im_overlay
     
-def normalize(im,vis_diag=False,fig=''):
+def normalize(im,vis_diag=False,ax=None,fig=''):
     # normalize intensity image
     assert im.ndim==2, 'Not 1channel image'
     cdf, bins=cumulative_distribution(im, nbins=256)
@@ -78,12 +79,15 @@ def normalize(im,vis_diag=False,fig=''):
     im_norm=(im_norm-minI)/(maxI-minI)
     im_norm=(255*im_norm).astype('uint8')       
     if vis_diag:
-        fi=plt.figure(fig+'_normalized')
-        axi=fi.add_subplot(111)
-        divider = make_axes_locatable(axi)
-        cax = divider.append_axes('right', size='5%', pad=0.05)
-        i=axi.imshow(im_norm,cmap='jet')
-        fi.colorbar(i, cax=cax, orientation='vertical')
+        if ax is None:
+            fi=plt.figure(fig+'_normalized')
+            ax=fi.add_subplot(111)
+            divider = make_axes_locatable(ax)
+            cax = divider.append_axes('right', size='5%', pad=0.05)
+            i=ax.imshow(im_norm,cmap='jet')
+            fi.colorbar(i, cax=cax, orientation='vertical')
+        else:
+            ax.imshow(im_norm,cmap='jet')
         plt.show()
     return im_norm            
     

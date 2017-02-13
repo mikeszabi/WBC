@@ -22,21 +22,21 @@ import cfg
 import imtools
 import diagnostics
 import segmentations
+import cell_morphology
 import annotations
 
 
-plt.close('all')
 #%matplotlib qt5
  
 ##
 param=cfg.param()
 vis_diag=False
 
-imDirs=os.listdir(param.getTestImageDirs(''))
+imDirs=os.listdir(param.getImageDirs(''))
 print(imDirs)
-i_imDirs=5
+i_imDirs=1
 save_dir=param.getSaveDir(imDirs[i_imDirs])
-image_dir=param.getTestImageDirs(imDirs[i_imDirs])
+image_dir=param.getImageDirs(imDirs[i_imDirs])
 
 included_extenstions = ['*.jpg', '*.bmp', '*.png', '*.gif']
 image_list_indir = []
@@ -49,7 +49,8 @@ for image_file in image_list_indir:
     # reading image
     
 #if __name__ == '__main__':
-    image_file=image_list_indir[1]
+    #image_file=image_list_indir[-3]
+    #image_file=image_dir+'\\36.bmp'
     print(image_file)
     im = io.imread(image_file) # read uint8 image
     
@@ -60,50 +61,43 @@ for image_file in image_list_indir:
                   
     # diagnose image, create overexpo mask and correct for inhomogen illumination
     diag=diagnostics.diagnostics(im,image_file,vis_diag=vis_diag)
-    diag.writeDiagnostics(save_dir)
+    #diag.writeDiagnostics(save_dir)
     
     
     """
     Foreground and wbc segmentation
     """                   
-    #cent_2, label_mask_2 = segmentations.segment_fg_bg_onechannel_binary(im_corrected, mask_over, diag.measures['ch_maxvar'], vis_diag=True)   
+    #cent_2, label_mask_2 = segmentations.segment_fg_bg_onechannel_binary(im_corrected, mask_over, diag.measures['ch_maxvar'], vis_diag=vis_diag)   
     hsv_resize, scale=imtools.imRescaleMaxDim(diag.hsv_corrected,512,interpolation = 0)
-    
-    # create foreground mask using previously set init centers
-    cent_2, label_mask_2_resize = segmentations.segment_fg_bg_sv_kmeans4(hsv_resize, diag.cent_init, vis_diag=vis_diag)   
-    
-    # create segmentation for RBC detection based on hs
-    sat_min=np.sort(cent_2[:,0])[-4]
-    mask=np.logical_and(label_mask_2_resize==3,hsv_resize[:,:,1]>sat_min)
-    cent_3, label_mask_3_resize = segmentations.segment_cell_hs_kmeans3(hsv_resize, mask=mask, cut_channel=1, vis_diag=vis_diag)   
-    
-    # create segmentation for WBC detection based on hue
-    sat_min=np.sort(cent_2[:,0])[-1]*1.2
-    mask=np.logical_and(np.logical_or(label_mask_3_resize==1,label_mask_2_resize==2),hsv_resize[:,:,1]>sat_min)
-    cent_4, label_mask_4_resize = segmentations.segment_wbc_hue(hsv_resize, cut_channel=1, mask=mask, vis_diag=False)   
-    
+    label_mask_resize=np.zeros(hsv_resize.shape[0:2]).astype('uint8')
+
     with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        label_mask_3 = img_as_ubyte(resize(label_mask_3_resize,(im.shape[0],im.shape[1]), order = 0))
-        label_mask_4 = img_as_ubyte(resize(label_mask_4_resize,(im.shape[0],im.shape[1]), order = 0))
+        warnings.simplefilter("ignore")    
+    # create foreground mask using previously set init centers
+        cent_2, label_2 = segmentations.segment_fg_bg_sv_kmeans4(hsv_resize, diag.cent_init, vis_diag=vis_diag)   
+        # adding meaningful labels
+        ind_sat=np.argsort(cent_2[:,0])
+        ind_val=np.argsort(cent_2[:,1])
+        label_mask_resize[label_2==ind_val[-1]]=1 # sure background
+        label_mask_resize[label_2==ind_sat[-1]]=31 # sure cell foreground guess 1 
+        if cent_2[ind_sat[-2],0]/cent_2[ind_sat[-3],0]>cent_2[ind_sat[-1],0]/cent_2[ind_sat[-2],0]:
+                 label_mask_resize[label_2==ind_sat[-2]]=32 # sure cell foreground guess 2
     
+        # create segmentation for WBC detection based on hue
+        sat_min=np.sort(cent_2[:,0])[-1]
+        mask=np.logical_and(label_mask_resize>30,hsv_resize[:,:,1]>sat_min)
+        cent_3, label_3 = segmentations.segment_cell_hs_kmeans5(hsv_resize, mask=mask, cut_channel=1, vis_diag=vis_diag)   
+        ind_sat=np.argsort(cent_3[:,1])
+        label_mask_resize[label_3==ind_sat[-1]]=4 # sure wbc
+
+        label_mask = img_as_ubyte(resize(label_mask_resize,diag.image_shape, order = 0))
+        
     """
     Creating Clear RBC mask
     """
+   
+    mask_fg_clear=cell_morphology.rbc_mask_morphology(im,label_mask,param,vis_diag=vis_diag,fig='31')
     
-    # create foreground mask - morphology: fill holes and opening
-    #mask_fg_sure=np.logical_or(label_mask_3==1,label_mask_3==3)
-    mask_fg_sure=label_mask_3==3
-    imtools.maskOverlay(im,255*mask_fg_sure,0.5,vis_diag=vis_diag,fig='mask_fg_sure')
-    
-    # remove holes from foreground mask
-    mask_fg_sure_filled=morphology.remove_small_holes(mask_fg_sure, 
-                                                      min_size=param.rbcR*param.rbcR*np.pi/4, 
-                                                      connectivity=1)
-    
-    # opening
-    mask_fg_clear=morphology.binary_opening(mask_fg_sure_filled,morphology.disk(param.rbcR/4)).astype('uint8')
-    imtools.maskOverlay(im,255*(mask_fg_clear>0),0.5,vis_diag=vis_diag,fig='mask_fg_sure_clear')
     
     """
     Find RBC markers - using dtf and local maximas
@@ -163,12 +157,13 @@ for image_file in image_list_indir:
     """
     # create wbc mask
     
-    mask_wbc_sure=label_mask_4==1
+    mask_wbc_sure=label_mask==4
     imtools.maskOverlay(im,255*mask_wbc_sure,0.5,vis_diag=vis_diag,fig='mask_wbc_sure')
     
     # opening
-    mask_wbc_clear=morphology.binary_opening(mask_wbc_sure,morphology.disk(param.rbcR/3)).astype('uint8')
-    im_detect=imtools.maskOverlay(im_markers,255*mask_wbc_clear,0.5,ch=2,vis_diag=True,fig='mask_wbc')
+    mask_wbc_clear=morphology.binary_opening(mask_wbc_sure,morphology.disk(param.rbcR/4)).astype('uint8')
+    mask_wbc_blob=morphology.binary_closing(mask_wbc_clear,morphology.disk(param.rbcR)).astype('uint8')
+    im_detect=imtools.maskOverlay(im_markers,255*mask_wbc_blob,0.5,ch=2,vis_diag=vis_diag,fig='mask_wbc')
     
     
     """

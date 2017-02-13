@@ -34,7 +34,7 @@ def segment_fg_bg_sv_kmeans4(csp, init_centers, vis_diag=False):
     center = kmeans.cluster_centers_
     label = kmeans.labels_
     #print(center)
-    colors = cm.jet(np.linspace(1/(label.max()+1), 1, label.max()+1))
+    colors = cm.jet(np.linspace(0, 1, label.max()+1))
 
     if vis_diag:
         rs=random.sample(range(0, Z.shape[0]-1), 1000)
@@ -58,33 +58,33 @@ def segment_fg_bg_sv_kmeans4(csp, init_centers, vis_diag=False):
         imtools.normalize(lab_all,vis_diag=vis_diag,fig='fg_bg_labels')
     
     # adding meaningful labels
-    lab=2*np.ones(lab_all.shape).astype('uint8')
-    
-    ind_sat=np.argsort(center[:,0])
-    ind_val=np.argsort(center[:,1])
-   
-    sure_ind=[]
-    # sure background mask - largest intensity
-    lab[lab_all==ind_val[-1]]=1
-    sure_ind.append(ind_val[-1])
-                 
-    # sure foreground mask -largest saturation
-    #if ind_sat[-1] not in sure_ind:
-    #if ind_val[ind_sat[-1]]>ind_val[ind_sat[-2]]:        
-    lab[lab_all==ind_sat[-1]]=3
-    sure_ind.append(ind_sat[-1])
-    #else:
-    lab[lab_all==ind_sat[-2]]=3
-    sure_ind.append(ind_sat[-2])
-       
+#    lab=2*np.ones(lab_all.shape).astype('uint8')
+#    
+#    ind_sat=np.argsort(center[:,0])
+#    ind_val=np.argsort(center[:,1])
+#   
+#    sure_ind=[]
+#    # sure background mask - largest intensity
+#    lab[lab_all==ind_val[-1]]=1
+#    sure_ind.append(ind_val[-1])
+#                 
+#    # sure foreground mask -largest saturation
+#    #if ind_sat[-1] not in sure_ind:
+#    #if ind_val[ind_sat[-1]]>ind_val[ind_sat[-2]]:        
+#    lab[lab_all==ind_sat[-1]]=3
+#    sure_ind.append(ind_sat[-1])
+#    #else:
+#    lab[lab_all==ind_sat[-2]]=3
+#    sure_ind.append(ind_sat[-2])
+#       
 
     # lab == 1 : sure bckg
     # lab ==2 : unsure
     # lab == 3 : sure foreground
 
-    return center, lab
+    return center, lab_all
 
-def segment_cell_hs_kmeans3(csp, mask, cut_channel=1, vis_diag=False):  
+def segment_cell_hs_kmeans5(csp, mask, cut_channel=1, vis_diag=False):  
     rgb_range=((330/360*255,30/360*255), (75/360*255,135/360*255), (180/360*255,270/360*255))
 
     cut = np.mean(rgb_range[cut_channel])
@@ -102,7 +102,7 @@ def segment_cell_hs_kmeans3(csp, mask, cut_channel=1, vis_diag=False):
     Z[Z[:,0]<cut,0]=Z[Z[:,0]<cut,0]+cut
     Z_1=Z[Z_mask>0,0:2]
 
-    kmeans = KMeans(n_clusters=3, random_state=0).fit(Z_1)
+    kmeans = KMeans(n_clusters=5, random_state=0).fit(Z_1)
     
     # TODO: initialize centers from histogram peaks
     center = kmeans.cluster_centers_
@@ -141,24 +141,8 @@ def segment_cell_hs_kmeans3(csp, mask, cut_channel=1, vis_diag=False):
     lab_ok=lab_all.reshape((csp.shape[0:2]))
     if vis_diag:
         imtools.normalize(lab_ok,vis_diag=vis_diag,fig='wbc_labels')
-       
-    # adding meaningful labels
-    lab=np.zeros(lab_ok.shape).astype('uint8')
-    
-    ind=np.argsort(center[:,0])
-    #ind=np.argsort(Q95)
-    #ind=np.argsort(center[:,1])
-    sure_ind=[]
-    # wbc and cell membrane - largest index
-    
-    lab[lab_ok==ind[-1]]=3
-    sure_ind.append(ind[-1])
-    lab[lab_ok==ind[-2]]=1
-    sure_ind.append(ind[-2])
-    lab[lab_ok==ind[-3]]=2
-    sure_ind.append(ind[-3])
   
-    return center, lab
+    return center, lab_ok
 
 
 def segment_wbc_hue(csp, mask, cut_channel=1, vis_diag=False):  
@@ -209,22 +193,5 @@ def segment_wbc_hue(csp, mask, cut_channel=1, vis_diag=False):
     lab_ok=lab_all.reshape((csp.shape[0:2]))
     if vis_diag:
         imtools.normalize(lab_ok,vis_diag=vis_diag,fig='wbc_labels')
-       
-    # adding meaningful labels
-    lab=np.zeros(lab_ok.shape).astype('uint8')
-    
-    ind=np.argsort(center[:,0])
-    #ind=np.argsort(Q95)
-    #ind=np.argsort(center[:,1])
-    sure_ind=[]
-    # wbc and cell membrane - largest index
-    
-    # TODO: check which has higher saturation
-    lab[lab_ok==ind[-1]]=3
-    sure_ind.append(ind[-1])
-    lab[lab_ok==ind[-2]]=1
-    sure_ind.append(ind[-2])
-#    lab[lab_ok==ind[-3]]=2
-#    sure_ind.append(ind[-3])
   
-    return center, lab
+    return center, lab_ok

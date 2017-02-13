@@ -33,6 +33,8 @@ class diagnostics:
         self.image_file=image_file
         self.image_shape=(im.shape[0],im.shape[1])
         
+        # TODO: add blob detection, estimate RBC size, statistics on blob localization
+        
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             self.hsv = img_as_ubyte(color.rgb2hsv(im))
@@ -105,7 +107,8 @@ class diagnostics:
     
     def illumination_correction(self):
         cent_init, label_mask = segmentations.segment_fg_bg_sv_kmeans4(self.hsv_small, 'k-means++')
-        mask_bg_sure=morphology.binary_erosion(label_mask == 1,morphology.disk(2));
+        ind_val=np.argsort(cent_init[:,1]) # background - highest intensity
+        mask_bg_sure=morphology.binary_erosion(label_mask == ind_val[-1],morphology.disk(2));
         mask_bg_sure= img_as_ubyte(resize(mask_bg_sure,self.image_shape,order=0))
 # TODO: check background distance transform and coverage (area) - should not be too large, too small
 
