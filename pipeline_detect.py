@@ -32,11 +32,11 @@ import annotations
 param=cfg.param()
 vis_diag=False
 
-imDirs=os.listdir(param.getImageDirs(''))
+imDirs=os.listdir(param.getTestImageDirs(''))
 print(imDirs)
-i_imDirs=1
+i_imDirs=-1
 save_dir=param.getSaveDir(imDirs[i_imDirs])
-image_dir=param.getImageDirs(imDirs[i_imDirs])
+image_dir=param.getTestImageDirs(imDirs[i_imDirs])
 
 included_extenstions = ['*.jpg', '*.bmp', '*.png', '*.gif']
 image_list_indir = []
@@ -49,7 +49,7 @@ for image_file in image_list_indir:
     # reading image
     
 #if __name__ == '__main__':
-    #image_file=image_list_indir[-3]
+    #image_file=image_list_indir[1]
     #image_file=image_dir+'\\36.bmp'
     print(image_file)
     im = io.imread(image_file) # read uint8 image
@@ -116,42 +116,6 @@ for image_file in image_list_indir:
      
     #TODO: count markers
     
-    
-    """
-    Save shapes
-    """
-    #skimage.measure.regionprops
-    
-    #cnts = measure.find_contours(mask_fg_clear, 0.5)
-    #regions = measure.regionprops(labels_ws)
-    #http://scikit-image.org/docs/dev/api/skimage.measure.html#skimage.measure.regionprops
-    
-    #if vis_diag:
-    #    fc=plt.figure('contours')
-    #    axc=fc.add_subplot(111)
-    #    axc.imshow(im)   
-    #    for n, contour in enumerate(cnts):
-    #        axc.plot(contour[:,1], contour[:, 0], linewidth=2)
-    #        axc.text(np.mean(contour[:,1]), np.mean(contour[:, 0]),str(n), bbox=dict(facecolor='white', alpha=0.5))
-    #    
-    
-    #for iBlob in range(len(cnts)):
-    #    # TODO: check if not close to image border (mean_contour)
-    #    # TODO: check if saturation histogram
-    #    contour=cnts[iBlob]
-    #    mask_blob=np.zeros((im.shape[0],im.shape[1]),'uint8')
-    #    #contour=cnts[iBlob]
-    #    rr,cc=skimage.draw.polygon(contour[:,0], contour[:, 1], shape=None)
-    #    if rr.size>100:
-    #        mask_blob[rr,cc]=255
-    #        reg = measure.regionprops(mask_blob)
-    #        r=reg[0]
-    #        nEstimated=r.area/rbcSize
-    #       #print(r.convex_area/r.area)
-    #       #print(nEstimated)
-    #        nMarkers=(local_maxi[mask_blob>0]>0).sum()
-    #       #print(nMarkers)
-    ##       
     """
     WBC
     """
@@ -161,32 +125,83 @@ for image_file in image_list_indir:
     imtools.maskOverlay(im,255*mask_wbc_sure,0.5,vis_diag=vis_diag,fig='mask_wbc_sure')
     
     # opening
-    mask_wbc_clear=morphology.binary_opening(mask_wbc_sure,morphology.disk(param.rbcR/4)).astype('uint8')
-    mask_wbc_blob=morphology.binary_closing(mask_wbc_clear,morphology.disk(param.rbcR)).astype('uint8')
-    im_detect=imtools.maskOverlay(im_markers,255*mask_wbc_blob,0.5,ch=2,vis_diag=vis_diag,fig='mask_wbc')
+    mask_wbc_close=morphology.binary_closing(mask_wbc_sure,morphology.disk(param.rbcR)).astype('uint8')
+    mask_wbc_clear=morphology.binary_opening(mask_wbc_close,morphology.disk(param.rbcR/4)).astype('uint8')
+    im_detect=imtools.maskOverlay(im_markers,255*mask_wbc_clear,0.5,ch=2,vis_diag=vis_diag,fig='mask_wbc')
     
-    
+ 
+    # TODO: delete markers close to WBC
     """
     SAVE RESULTS
     """
     
     diag.saveDiagImage(im_detect,'_detect',savedir=save_dir)
     
-       
+
     """
-    Create SHAPES and store them
+    Save shapes
     """
-    # ToDo: merge groups
-    #shapelist=[]
-    #for c in cnts:
-    #     one_shape=('RBC','general',c,'None','None')
-    #     shapelist.append(one_shape)
-    #
-    #head, tail=os.path.split(image_file)
-    #xml_file=os.path.join(save_dir,tail.replace('.bmp',''))
-    #tmp = annotations.AnnotationWriter(head,xml_file, (im.shape[0],im.shape[1]))
-    #tmp.addShapes(shapelist)
-    #tmp.save()
-    #
-    #imtools.plotShapes(im,shapelist)
+    #skimage.measure.regionprops
     
+    cnts_RBC = measure.find_contours(markers>0, 0.5)
+    cnts_WBC = measure.find_contours(mask_wbc_clear>0, 0.5)
+
+    #regions = measure.regionprops(labels_ws)
+    #http://scikit-image.org/docs/dev/api/skimage.measure.html#skimage.measure.regionprops
+    
+    if vis_diag:
+        fc=plt.figure('contours')
+        axc=fc.add_subplot(111)
+        axc.imshow(im)   
+        for n, contour in enumerate(cnts_RBC):
+            axc.plot(contour[:,1], contour[:, 0], linewidth=1, color='r')
+ #           axc.text(np.mean(contour[:,1]), np.mean(contour[:, 0]),str(n), bbox=dict(facecolor='white', alpha=0.5))
+        for n, contour in enumerate(cnts_WBC):
+            axc.plot(contour[:,1], contour[:, 0], linewidth=1, color='w')
+    
+#    for iBlob in range(len(cnts)):
+#        # TODO: check if not close to image border (mean_contour)
+#        # TODO: check if saturation histogram
+#        contour=cnts[iBlob]
+#        mask_blob=np.zeros((im.shape[0],im.shape[1]),'uint8')
+#        #contour=cnts[iBlob]
+#        rr,cc=skimage.draw.polygon(contour[:,0], contour[:, 1], shape=None)
+#        if rr.size>100:
+#            mask_blob[rr,cc]=255
+#            reg = measure.regionprops(mask_blob)
+#            r=reg[0]
+#            nEstimated=r.area/rbcSize
+#           #print(r.convex_area/r.area)
+#           #print(nEstimated)
+#            nMarkers=(local_maxi[mask_blob>0]>0).sum()
+#           #print(nMarkers)
+    #       
+    # ToDo: merge groups
+    shapelist=[]
+    for c in cnts_RBC:
+         c=np.reshape(np.average(c,axis=0),(1,2))
+         pts=[]
+         for yx in c:
+             pts.append((yx[1],yx[0]))
+         one_shape=('RBC','point',pts,'None','None')
+         shapelist.append(one_shape)
+    for c in cnts_WBC:
+         c=np.reshape(np.average(c,axis=0),(1,2))
+         pts=[]
+         for yx in c:
+             pts.append((yx[1],yx[0]))
+         one_shape=('WBC','polygon',pts,'None','None')
+         shapelist.append(one_shape)
+    
+    head, tail=os.path.split(image_file)
+    xml_file=os.path.join(save_dir,tail.replace('.bmp',''))
+    tmp = annotations.AnnotationWriter(head,xml_file, (im.shape[0],im.shape[1]))
+    tmp.addShapes(shapelist)
+    tmp.save()
+    #
+    imtools.plotShapes(im,shapelist)
+    
+    #filepath=image_file.replace(bmp,xml)
+    filepath=r'd:\DATA\Kenet32\103.xml'
+    tempParseReader = annotations.AnnotationReader(filepath)
+    shapelist=tempParseReader.getShapes()
