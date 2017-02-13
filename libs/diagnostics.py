@@ -141,6 +141,12 @@ class diagnostics:
         diag_image_file=os.path.join(savedir,head+diag_id+'.jpg')
         io.imsave(diag_image_file,im)
 
+    def saveDiagFigure(self, fig, diag_id, savedir=None):
+        if savedir is None:
+            savedir=os.path.dirname(self.image_file)
+        head, tail = str.split(os.path.basename(self.image_file),'.')
+        diag_image_file=os.path.join(savedir,head+diag_id+'.jpg')
+        fig.savefig(diag_image_file)
 
 def illumination_inhomogenity_hsv(hsv, mask_bg_sure, vis_diag=False):
     # using inpainting techniques

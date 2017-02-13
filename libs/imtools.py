@@ -114,7 +114,8 @@ def plotShapes(im, shapelist):
     axs.imshow(im)  
     for shape in shapelist:
         pts=shape[2]
-        axs.plot(pts[:,1], pts[:, 0], linewidth=3, color='g')
+        axs.plot(pts[:,1], pts[:, 0], linewidth=6, color='g')
+        axs.text(np.mean(pts[:,1]), np.mean(pts[:, 0]),shape[0], bbox=dict(facecolor='white', alpha=0.5))
 
 def histogram_similarity(hist, reference_hist):
    

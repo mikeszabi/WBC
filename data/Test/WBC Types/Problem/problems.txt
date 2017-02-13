@@ -2,7 +2,10 @@
 8_NEU; állott kenet
 52_NEU; sötét, kicsi kontrasztú kép, nem egyenletes megvilágítás
 45_MO; inverz szaturáció az foreground-unsure esetében
-22_EO; RBC-k közepe nagy világos folt
+99_EO; RBC-k közepe nagy világos folt
 17_LY; kiégett közép, elmosódott
 96_EO; WBC-t nem detektáljuk
-36_EO; WBC-t nem detektáljuk
+208_K32; egyik WBC-t nem detektáljuk
+159_K32; egyik WBC-t nem detektáljuk
+105_K32; jobb alsó rész rossz
+103_K32; 3 WBC
