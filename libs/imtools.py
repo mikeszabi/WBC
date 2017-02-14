@@ -66,6 +66,21 @@ def maskOverlay(im,mask,alpha,ch=1,sbs=False,ax=None, vis_diag=False,fig=''):
             ax=fi.add_subplot(111)
         ax.imshow(both)
     return im_overlay
+
+def overlayImage(im, mask, col, alpha,ax=None,fig='',vis_diag=False):
+    assert im.ndim==3, 'Not 3channel image'
+    assert im.dtype=='uint8', 'Not uint8'
+    maskRGB = np.tile(mask[..., np.newaxis]>0, 3)
+    untocuhed = (maskRGB == False) * im
+    overlayComponent = 255* alpha * np.array(col) * maskRGB
+    origImageComponent = (1 - alpha) * maskRGB * im
+    im_overlay=img_as_ubyte((untocuhed + overlayComponent + origImageComponent)/255)
+    if vis_diag:
+        if ax is None:
+            fi=plt.figure(fig+'_overlayed')
+            ax=fi.add_subplot(111)
+        ax.imshow(im_overlay)
+    return im_overlay
     
 def normalize(im,vis_diag=False,ax=None,fig=''):
     # normalize intensity image

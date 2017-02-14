@@ -12,7 +12,7 @@ import imtools
 
 def rbc_mask_morphology(im,label_mask,param,vis_diag=False,fig=''):
     
-    mask_fg=label_mask>30
+    mask_fg=label_mask>3
 #    mask_fg_open_1=morphology.binary_closing(mask_fg,morphology.disk(1)).astype('uint8')
 #   
 #    mask_fg=label_mask==32

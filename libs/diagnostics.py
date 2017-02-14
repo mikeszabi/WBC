@@ -109,7 +109,9 @@ class diagnostics:
         cent_init, label_mask = segmentations.segment_fg_bg_sv_kmeans4(self.hsv_small, 'k-means++')
         ind_val=np.argsort(cent_init[:,1]) # background - highest intensity
         mask_bg_sure=morphology.binary_erosion(label_mask == ind_val[-1],morphology.disk(2));
-        mask_bg_sure= img_as_ubyte(resize(mask_bg_sure,self.image_shape,order=0))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            mask_bg_sure= img_as_ubyte(resize(mask_bg_sure,self.image_shape,order=0))
 # TODO: check background distance transform and coverage (area) - should not be too large, too small
 
         bckg_inhomogenity_pct, hsv_corrected=illumination_inhomogenity_hsv(self.hsv, mask_bg_sure, vis_diag=self.vis_diag)
