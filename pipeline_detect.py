@@ -33,7 +33,7 @@ print(image_list_indir)
 for image_file in image_list_indir:
     # reading image
     
-    # image_file=image_list_indir[1]
+    # image_file=image_list_indir[-5]
     #image_file=image_dir+'\\36.bmp'
     print(image_file)
     

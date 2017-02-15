@@ -42,7 +42,10 @@ class diagnostics:
             self.hsv_small, scale = imtools.imRescaleMaxDim(self.hsv, param.small_size, interpolation=0)            
             self.intensity_im=self.hsv[:,:,l_dim]            
             self.mask_over=self.overMask(self.intensity_im)            
-            self.cent_init, bckg_inhomogenity_pct, self.hsv_corrected, self.im_corrected=self.illumination_correction()
+            self.cent_init, \
+            bckg_inhomogenity_pct, \
+            self.hsv_corrected, \
+            self.im_corrected=self.illumination_correction()
         
         if self.mask_over.sum()>0:
             imtools.maskOverlay(im,self.mask_over,0.5,vis_diag=self.vis_diag,fig='overexposition mask')
@@ -53,6 +56,19 @@ class diagnostics:
         
         self.cumh_rgb, siqr_rgb = self.semi_IQR(self.imhists) # Semi-Interquartile Range
         self.cumh_hsv, siqr_hsv = self.semi_IQR(self.hsvhists) # Semi-Interquartile Range
+
+        cumh=self.cumh_hsv[1] # saturation
+        self.sat_q90=np.argwhere(cumh>0.9)[0,0]
+    
+        #hues=self.hsv_corrected[:,:,0].flat
+        #hues=hues[self.hsv_corrected[:,:,1].flat>self.sat_q90]
+        #hues_stdS90=np.std(hues)
+        #self.h_min_wbc=np.mean(hues)-hues_stdS90*param.hueWidth
+        #self.h_max_wbc=np.mean(hues)+hues_stdS90*param.hueWidth
+
+# TODO: allow adaptive setting
+        self.h_min_wbc=255*param.wbc_range_in_hue[0]
+        self.h_max_wbc=255*param.wbc_range_in_hue[1]
 
         minI=np.argwhere(self.cumh_hsv[l_dim]>0.05)[0,0]
         maxI=np.argwhere(self.cumh_hsv[l_dim]>0.95)[0,0]
@@ -66,7 +82,7 @@ class diagnostics:
         self.measures['overexpo_pct']=(self.mask_over>0).sum()/self.mask_over.size
         self.measures['global_entropy']=np.NaN # global homogenity
         self.measures['global_var']=np.NaN # global variance
-        self.measures['saturation_pcts']=np.NaN # Todo: hsv
+        self.measures['saturation_q90']=self.sat_q90
         self.measures['bckg_inhomogenity_pct']=bckg_inhomogenity_pct
         
         self.error_list=[]
@@ -80,6 +96,8 @@ class diagnostics:
             self.error_list.append('contrast')
         if self.measures['overexpo_pct']>0.1:
             self.error_list.append('overexpo_pct')
+        if self.measures['saturation_q90']<100:
+            self.error_list.append('saturation_q90')
         print('Error list:')
         for errors in self.error_list:
             print(errors+' :'+str(self.measures[errors]))
