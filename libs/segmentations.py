@@ -14,7 +14,7 @@ import matplotlib.cm as cm
 
 import random
 
-def segment_fg_bg_sv_kmeans4(csp, init_centers, vis_diag=False):  
+def segment_fg_bg_sv_kmeans(csp, init_centers, n_clusters=4, vis_diag=False):  
     # segmentation on csp image
     
     #param=cfg.param()
@@ -28,7 +28,7 @@ def segment_fg_bg_sv_kmeans4(csp, init_centers, vis_diag=False):
     # select saturation and value channels
     Z=Z[:,1:3]
 
-    kmeans = KMeans(n_clusters=4, random_state=1, init=init_centers).fit(Z)
+    kmeans = KMeans(n_clusters=n_clusters, random_state=1, init=init_centers).fit(Z)
     
     # TODO: initialize centers from histogram peaks
     center = kmeans.cluster_centers_
@@ -84,7 +84,7 @@ def segment_fg_bg_sv_kmeans4(csp, init_centers, vis_diag=False):
 
     return center, lab_all
 
-def segment_cell_hs_kmeans5(csp, mask, cut_channel=1, vis_diag=False):  
+def segment_cell_hs_kmeans(csp, mask, cut_channel=1, n_clusters=5, vis_diag=False):  
     rgb_range=((330/360*255,30/360*255), (75/360*255,135/360*255), (180/360*255,270/360*255))
 
     cut = np.mean(rgb_range[cut_channel])
@@ -102,7 +102,7 @@ def segment_cell_hs_kmeans5(csp, mask, cut_channel=1, vis_diag=False):
     Z[Z[:,0]<cut,0]=Z[Z[:,0]<cut,0]+cut
     Z_1=Z[Z_mask>0,0:2]
 
-    kmeans = KMeans(n_clusters=5, random_state=0).fit(Z_1)
+    kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(Z_1)
     
     # TODO: initialize centers from histogram peaks
     center = kmeans.cluster_centers_
@@ -145,7 +145,7 @@ def segment_cell_hs_kmeans5(csp, mask, cut_channel=1, vis_diag=False):
     return center, lab_ok
 
 
-def segment_wbc_hue(csp, mask, cut_channel=1, vis_diag=False):  
+def segment_wbc_hue(csp, mask, cut_channel=1, n_clusters=2, vis_diag=False):  
     rgb_range=((330/360*255,30/360*255), (75/360*255,135/360*255), (180/360*255,270/360*255))
 
     cut = np.mean(rgb_range[cut_channel])
@@ -162,7 +162,7 @@ def segment_wbc_hue(csp, mask, cut_channel=1, vis_diag=False):
     Z[Z<cut]+=cut
     Z_1=Z[Z_mask>0]
    
-    kmeans = KMeans(n_clusters=2, random_state=0).fit(Z_1)
+    kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(Z_1)
     
     # TODO: initialize centers from histogram peaks
     center = kmeans.cluster_centers_

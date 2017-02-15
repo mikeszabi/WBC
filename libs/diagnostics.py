@@ -106,7 +106,7 @@ class diagnostics:
         return overexpo_mask
     
     def illumination_correction(self):
-        cent_init, label_mask = segmentations.segment_fg_bg_sv_kmeans4(self.hsv_small, 'k-means++')
+        cent_init, label_mask = segmentations.segment_fg_bg_sv_kmeans(self.hsv_small, 'k-means++', n_clusters=4)
         ind_val=np.argsort(cent_init[:,1]) # background - highest intensity
         mask_bg_sure=morphology.binary_erosion(label_mask == ind_val[-1],morphology.disk(2));
         with warnings.catch_warnings():
