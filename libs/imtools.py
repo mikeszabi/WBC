@@ -123,18 +123,21 @@ def imRescaleMaxDim(im, maxDim, boUpscale = False, interpolation = 1):
         scale = 1.0
     return im, scale
 
-def plotShapes(im, shapelist):
-    fs=plt.figure('shapes image')
-    axs=fs.add_subplot(111)
+def plotShapes(im, shapelist, color='g', fig=None, text=True):
+    if fig is None:
+        fig=plt.figure('shapes image')
+    axs=fig.add_subplot(111)
     axs.imshow(im)  
     for shape in shapelist:
         pts=shape[2]
         if type(pts) is list:
             pts=np.asarray(pts)
             pts=np.concatenate((pts,np.reshape(pts[0,:],(1,2))),axis=0)
-        axs.plot(pts[:,0], pts[:,1], markersize =10, color='g', marker='.')
-        axs.text(np.mean(pts[:,0]), np.mean(pts[:, 1]),shape[0], bbox=dict(facecolor='white', alpha=0.5))
-
+        axs.plot(pts[:,0], pts[:,1], markersize =20, color=color, marker='.')
+        if text:
+            axs.text(np.mean(pts[:,0]), np.mean(pts[:, 1]),shape[0], bbox=dict(facecolor='white', alpha=0.5))
+    return fig
+    
 def histogram_similarity(hist, reference_hist):
    
     # Compute Chi squared distance metric: sum((X-Y)^2 / (X+Y));
