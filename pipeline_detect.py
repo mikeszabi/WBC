@@ -27,7 +27,7 @@ vis_diag=False
 
 imDirs=os.listdir(param.getTestImageDirs(''))
 print(imDirs)
-i_imDirs=-1
+i_imDirs=1
 output_dir=param.getOutDir('output')
 diag_dir=param.getOutDir('diag')
 

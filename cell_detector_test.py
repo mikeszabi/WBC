@@ -64,7 +64,6 @@ def main(image_file,vis_diag=False):
        label_mask_resize[label_2==ind_sat[-2]]=32 # sure cell foreground guess 2
        if cent_dist[ind_sat[-2],ind_sat[-3]]<cent_dist[ind_sat[-3],ind_val[-1]]:                 
            label_mask_resize[label_2==ind_sat[-3]]=33 # sure cell foreground guess 3
-    # TODO: check distribution of 31
     
     # create segmentation for WBC detection based on hue and saturation
     sat_min=max(np.sort(cent_2[:,0])[-4],30)
@@ -73,7 +72,8 @@ def main(image_file,vis_diag=False):
     if vis_diag:
         imtools.overlayImage(hsv_resize,mask>0,\
         (0,1,0),1,vis_diag=vis_diag,fig='wbc_mask')   
-    
+
+# TODO: remove randomness from KMEANS!!!    
     cent_3, label_3 = segmentations.segment_hsv(hsv_resize, mask=mask,\
                                                     cut_channel=1, chs=(0,0,1),\
                                                     n_clusters=4, vis_diag=vis_diag)   
@@ -97,7 +97,7 @@ def main(image_file,vis_diag=False):
         mask_pot=mask_tmps[ind_sat[-2]]
     else:
         mask_pot=mask_tmps[ind_sat[-1]]
-    im_pot=imtools.overlayImage(im_resize,mask_pot,(0,1,0),1,vis_diag=vis_diag,fig='pot')
+#    im_pot=imtools.overlayImage(im_resize,mask_pot,(0,1,0),1,vis_diag=vis_diag,fig='pot')
    
     cc,num=morphology.label(mask_pot,connectivity=1,return_num=True,background=0)    
     regions = measure.regionprops(cc.astype('int64'))
@@ -130,7 +130,7 @@ def main(image_file,vis_diag=False):
         mask_pot_2=np.logical_or(mask_tmps[ind_sat[-3]],mask_tmps[ind_sat[-1]])
     else:
         mask_pot_2=np.logical_or(mask_tmps[ind_sat[-2]],mask_tmps[ind_sat[-1]])
-    im_pot=imtools.overlayImage(im_resize,mask_pot_2,(0,1,0),1,vis_diag=vis_diag,fig='pot')
+#    im_pot=imtools.overlayImage(im_resize,mask_pot_2,(0,1,0),1,vis_diag=vis_diag,fig='pot')
     
     cc,num=morphology.label(mask_pot_2,connectivity=1,return_num=True,background=0)
     
@@ -143,7 +143,7 @@ def main(image_file,vis_diag=False):
            (r.area/r.convex_area>0.5):
             if (cc[mask_pot>0]==r.label).sum()>r.convex_area*0.25:
                 mask_wbc_small_0[cc==r.label]=255
-    
+ # TODO: do not detect if already detected - check masks  
 #    area_sorted=np.argsort(area)
 #    r=regions[area_sorted[-1]]                        
 # 
