@@ -74,7 +74,9 @@ def overlayImage(im, mask, col, alpha,ax=None,fig='',vis_diag=False):
     untocuhed = (maskRGB == False) * im
     overlayComponent = 255* alpha * np.array(col) * maskRGB
     origImageComponent = (1 - alpha) * maskRGB * im
-    im_overlay=img_as_ubyte((untocuhed + overlayComponent + origImageComponent)/255)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        im_overlay=img_as_ubyte((untocuhed + overlayComponent + origImageComponent)/255)
     if vis_diag:
         if ax is None:
             fi=plt.figure(fig+'_overlayed')

@@ -46,7 +46,7 @@ detect_stat=[]
 for image_file in image_list_indir:
     # reading image
     
-    # image_file=image_list_indir[7]
+    # image_file=image_list_indir[12]
     # image_file=image_dir+'\\36.bmp'
     print(image_file)
     

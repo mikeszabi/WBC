@@ -9,3 +9,4 @@
 159_K32; egyik WBC-t nem detektáljuk
 105_K32; jobb alsó rész rossz
 103_K32; 3 WBC
+11_K32; jobb felso rész erosebben szaturált

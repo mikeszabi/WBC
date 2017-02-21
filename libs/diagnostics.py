@@ -51,20 +51,16 @@ class diagnostics:
             imtools.maskOverlay(im,self.mask_over,0.5,vis_diag=self.vis_diag,fig='overexposition mask')
         
         self.measures={}
-        self.imhists=imtools.colorHist(im,mask=255-self.mask_over,vis_diag=False,fig='rgb')
-        self.hsvhists=imtools.colorHist(self.hsv,mask=255-self.mask_over,vis_diag=False,fig='hsv')
+        self.imhists=imtools.colorHist(im,mask=255-self.mask_over,vis_diag=vis_diag,fig='rgb')
+        self.hsvhists=imtools.colorHist(self.hsv,mask=255-self.mask_over,vis_diag=vis_diag,fig='hsv')
         
-        self.cumh_rgb, siqr_rgb = self.semi_IQR(self.imhists) # Semi-Interquartile Range
-        self.cumh_hsv, siqr_hsv = self.semi_IQR(self.hsvhists) # Semi-Interquartile Range
+        self.cumh_rgb, self.siqr_rgb = self.semi_IQR(self.imhists) # Semi-Interquartile Range
+        self.cumh_hsv, self.siqr_hsv = self.semi_IQR(self.hsvhists) # Semi-Interquartile Range
 
         cumh=self.cumh_hsv[1] # saturation
         self.sat_q90=np.argwhere(cumh>0.9)[0,0]
-    
-        #hues=self.hsv_corrected[:,:,0].flat
-        #hues=hues[self.hsv_corrected[:,:,1].flat>self.sat_q90]
-        #hues_stdS90=np.std(hues)
-        #self.h_min_wbc=np.mean(hues)-hues_stdS90*param.hueWidth
-        #self.h_max_wbc=np.mean(hues)+hues_stdS90*param.hueWidth
+        self.sat_q10=np.argwhere(cumh>0.1)[0,0]
+        #self.sat_peak=np.argmax(self.hsvhists[1])
 
 # TODO: allow adaptive setting
         self.h_min_wbc=255*param.wbc_range_in_hue[0]
@@ -73,9 +69,9 @@ class diagnostics:
         minI=np.argwhere(self.cumh_hsv[l_dim]>0.05)[0,0]
         maxI=np.argwhere(self.cumh_hsv[l_dim]>0.95)[0,0]
                                                                           
-        self.measures['siqr_rgb']=siqr_rgb
-        self.measures['siqr_hsv']=siqr_hsv
-        self.measures['ch_maxvar']=np.argmax(self.measures['siqr_rgb']) # channel with maximal variability
+        self.measures['siqr_rgb']=self.siqr_rgb
+        self.measures['siqr_hsv']=self.siqr_hsv
+        self.measures['ch_maxvar']=np.argmax(self.siqr_rgb) # channel with maximal variability
         self.measures['maxI']=maxI.astype('float64')
         self.measures['minI']=minI.astype('float64')
         self.measures['contrast']=(self.measures['maxI']-self.measures['minI'])/(self.measures['maxI']+self.measures['minI'])
@@ -83,6 +79,7 @@ class diagnostics:
         self.measures['global_entropy']=np.NaN # global homogenity
         self.measures['global_var']=np.NaN # global variance
         self.measures['saturation_q90']=self.sat_q90
+        self.measures['saturation_q10']=self.sat_q10
         self.measures['bckg_inhomogenity_pct']=bckg_inhomogenity_pct
         
         self.error_list=[]
@@ -98,6 +95,8 @@ class diagnostics:
             self.error_list.append('overexpo_pct')
         if self.measures['saturation_q90']<100:
             self.error_list.append('saturation_q90')
+        if self.measures['saturation_q10']>30:
+            self.error_list.append('saturation_q10')
         print('Error list:')
         for errors in self.error_list:
             print(errors+' :'+str(self.measures[errors]))
@@ -124,8 +123,9 @@ class diagnostics:
         return overexpo_mask
     
     def illumination_correction(self):
-        cent_init, label_mask = segmentations.segment_fg_bg_sv_kmeans(self.hsv_small, 'k-means++', n_clusters=4)
-        ind_val=np.argsort(cent_init[:,1]) # background - highest intensity
+        cent_init, label_mask = segmentations.segment_hsv(self.hsv_small, chs=(1,1,2),  n_clusters=4, vis_diag=self.vis_diag)
+        ind_val=np.argsort(cent_init[:,2]) # sure background - highest intensity
+        # TODO: check ind_val[-2]
         mask_bg_sure=morphology.binary_erosion(label_mask == ind_val[-1],morphology.disk(2));
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")

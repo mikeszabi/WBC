@@ -17,7 +17,7 @@ class param:
         self.small_size=128
         self.middle_size=256
         self.rgb_range_in_hue=((-30/360,30/360), (75/360,135/360), (180/360,240/360))
-        self.wbc_range_in_hue=(225/360,300/360)
+        self.wbc_range_in_hue=(225/360,330/360)
         self.hueWidth=2
         self.project='WBC'
         #self.root_dir=r'd:\Projects'
