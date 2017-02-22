@@ -1,0 +1,17 @@
+8_NEU;NE;old smear
+11_K32;EO,NE;right upper part oversaturated, destructed EO
+13_LY;LY; wrong clustering
+17_LY;LY;overexposed middle, blurry
+36_NE;NE;small neutrophil
+45_MO;MO;unsure foreground detection
+47_NE;NE;old smear
+49_NE;NE;small neutrophil
+52_NE;NE;not connected neutrophil
+80_LY;LY;not detected, small lymphocite
+96_EO;EO; WBC hard to detect
+99_EO;EO; RBC-s has light middle, nucleus separated
+100_K32;NE;small neutrophil
+103_K32;MO,LY,NE; 3 WBCs
+105_K32;EO,NE;right lower oversaturated
+159_K32;LY,MO; very different WBC-s
+208_K32;MO,NE; very different WBC-s

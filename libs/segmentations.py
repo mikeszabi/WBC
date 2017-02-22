@@ -4,7 +4,7 @@ Created on Wed Feb  1 10:33:32 2017
 
 @author: SzMike
 """
-
+import warnings
 import numpy as np;
 import imtools
 from sklearn.cluster import KMeans
@@ -38,7 +38,9 @@ def segment_hsv(csp, mask=None, init_centers='k-means++', cut_channel=1, chs=(0,
             Z[Z[:,i]<cut,i]=Z[Z[:,i]<cut,i]+cut
     Z_1=Z[Z_mask>0]
 
-    kmeans = KMeans(n_clusters=n_clusters, random_state=0, init=init_centers).fit(Z_1)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        kmeans = KMeans(n_clusters=n_clusters, random_state=0, init=init_centers).fit(Z_1)
     
     center = kmeans.cluster_centers_
     label = kmeans.labels_
@@ -61,10 +63,9 @@ def segment_hsv(csp, mask=None, init_centers='k-means++', cut_channel=1, chs=(0,
         ax.set_ylabel(ch_names[chs[1]])
         ax.set_zlabel(ch_names[chs[2]])    
         for i, c in enumerate(center):
-            ax.scatter(Z_rs[label_rs==i, 0], Z_rs[label_rs==i, 1], Z_rs[label_rs==i, 2], color=colors[i,:])                   
-    
+            ax.scatter(Z_rs[label_rs==i, 0], Z_rs[label_rs==i, 1], Z_rs[label_rs==i, 2], color=colors[i,:])                      
             ax.scatter(c[0],c[1],c[2], 'o', s=100, c='k')
-
+            ax.text(c[0],c[1],c[2],str(i),bbox=dict(facecolor='white', alpha=1),size='x-large',va='top',weight='heavy')
         plt.show()
 
     lab_all=np.zeros(Z.shape[0])

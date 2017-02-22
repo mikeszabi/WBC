@@ -14,6 +14,28 @@ import matplotlib.pyplot as plt
 
 import imtools
 import cfg
+import segmentations
+
+
+def rbc_labels(im,clust_centers_0,label_0,vis_diag=False):
+    # creating meaningful labels for foreground-background segmentation and RBC detection
+    cent_dist=segmentations.center_diff_matrix(clust_centers_0,metric='euclidean')
+    
+    # adding meaningful labels
+    ind_sat=np.argsort(clust_centers_0[:,0])
+    ind_val=np.argsort(clust_centers_0[:,2])
+    
+    label_fg_bg=np.zeros(label_0.shape).astype('uint8')
+    label_fg_bg[label_0==ind_val[-1]]=1 # sure background
+    label_fg_bg[label_0==ind_val[-2]]=2 # unsure region
+    label_fg_bg[label_0==ind_sat[-1]]=31 # cell foreground guess 1 
+    if cent_dist[ind_sat[-1],ind_sat[-2]]<cent_dist[ind_sat[-2],ind_val[-1]]:
+       label_fg_bg[label_0==ind_sat[-2]]=32 # cell foreground guess 2
+       if cent_dist[ind_sat[-2],ind_sat[-3]]<cent_dist[ind_sat[-3],ind_val[-1]]:                 
+           label_fg_bg[label_0==ind_sat[-3]]=33 # cell foreground guess 3
+          
+    return label_fg_bg
+
 
 def rbc_mask_morphology(im,label_mask,label_tsh=3,vis_diag=False,fig=''):
     
@@ -60,10 +82,51 @@ def rbc_markers_from_mask(mask_fg_clear):
     # watershed seeds
     # TODO - add parameters to cfg
     local_maxi = feature.peak_local_max(dtf, indices=False, 
-                                        threshold_abs=0.25*param.rbcR,
-                                        footprint=np.ones((int(1.5*param.rbcR), int(1.5*param.rbcR))), 
+                                        threshold_abs=0.5*param.rbcR,
+                                        footprint=np.ones((int(param.rbcR), int(param.rbcR))), 
                                         labels=mask_fg_clear.copy())
     markers, n_RBC = measure.label(local_maxi,return_num=True)
     segmentation.clear_border(markers,buffer_size=50,in_place=True)
     
     return markers
+
+def wbc_masks(im,clust_centers_1,label_1,vis_diag=False):
+    param=cfg.param()
+    # creating masks for labels        
+    n=np.zeros(clust_centers_1.shape[0])
+    mask_tmps=[]
+    for i, c in enumerate(clust_centers_1):
+        mask_tmp=morphology.binary_opening(label_1==i,morphology.disk(1))
+        mask_tmps.append(mask_tmp)
+        n[i]=mask_tmp.sum()
+#        
+    ind_n=np.argsort(n)
+    ind_sat=np.argsort(clust_centers_1[:,2])
+   
+    if n[ind_n[-1]]/sum(n)>0.5:
+        if ind_sat[-1]==ind_n[-1]:
+# normally pixels with highest saturations are candidates for wbc segments, but here rbc-s have higher sat
+# TODO: add diagnostics
+            mask_pot_wbc_1=mask_tmps[ind_sat[-2]]
+            mask_pot_wbc_2=np.logical_or(mask_tmps[ind_sat[-3]],mask_tmps[ind_sat[-2]])
+            print('undersaturated wbc') # wbc is not at highest saturation
+        elif ind_sat[-2]==ind_n[-1]:
+            mask_pot_wbc_1=mask_tmps[ind_sat[-1]]
+            mask_pot_wbc_2=np.logical_or(mask_tmps[ind_sat[-3]],mask_tmps[ind_sat[-1]])
+        else:
+            mask_pot_wbc_1=mask_tmps[ind_sat[-1]]
+            mask_pot_wbc_2=np.logical_or(mask_tmps[ind_sat[-2]],mask_tmps[ind_sat[-1]]) 
+    else:
+        mask_pot_wbc_1=mask_tmps[ind_sat[-1]]
+        mask_pot_wbc_2=np.logical_or(mask_tmps[ind_sat[-2]],mask_tmps[ind_sat[-1]]) 
+        
+    mask_wbc_pot=[]    
+# TODO: dd parameters
+    mask_wbc_pot.append(morphology.binary_opening(mask_pot_wbc_1,morphology.disk(1)))
+    mask_wbc_pot.append(morphology.binary_opening(mask_pot_wbc_2,morphology.disk(1)))
+
+    if vis_diag:
+        im_pot=imtools.overlayImage(im,mask_pot_wbc_1,(1,1,0),0.5,vis_diag=vis_diag,fig='potential_wbc')
+        im_pot=imtools.overlayImage(im_pot,mask_pot_wbc_2,(0,1,1),0.5,vis_diag=vis_diag,fig='potential_wbc')
+        
+    return mask_wbc_pot

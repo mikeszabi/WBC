@@ -15,7 +15,6 @@ import matplotlib.pyplot as plt
 
 import annotations
 import cell_detector
-import cell_detector_test
 
 import imtools
 
@@ -27,7 +26,7 @@ vis_diag=False
 
 imDirs=os.listdir(param.getTestImageDirs(''))
 print(imDirs)
-i_imDirs=1
+i_imDirs=-1
 output_dir=param.getOutDir('output')
 diag_dir=param.getOutDir('diag')
 
@@ -40,20 +39,18 @@ for ext in included_extenstions:
 
 for i, image_file in enumerate(image_list_indir):
     print(str(i)+' : '+image_file)
-
+image_file=image_list_indir[14]
 detect_stat=[]
 
 for image_file in image_list_indir:
     # reading image
     
-    # image_file=image_list_indir[7]
-    # image_file=image_dir+'\\36.bmp'
     print(image_file)
     
     """
     RUN automatic detection
     """
-    shapelist=cell_detector_test.main(image_file)
+    shapelist=cell_detector.main(image_file)
     
     """
     READ manual annotations
