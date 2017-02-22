@@ -11,11 +11,10 @@ import numpy as np;
 from skimage.transform import resize
 from skimage import morphology
 from skimage import filters
+
 from skimage import measure
-from skimage import segmentation
-from skimage.draw import polygon
-from skimage import img_as_ubyte, img_as_float
-import matplotlib.pyplot as plt
+from skimage import img_as_ubyte
+
 # %matplotlib qt5
 
 import cfg
@@ -32,13 +31,16 @@ def main(image_file,vis_diag=False):
 
     # SET THE PARAMETERS
     param=cfg.param()
-    output_dir=param.getOutDir('output')
-    diag_dir=param.getOutDir('diag')
+    output_dir=param.getOutDir(dir_name='output')
+    diag_dir=param.getOutDir(dir_name='diag')
     
     # READ THE IMAGE
     im = io.imread(image_file) # read uint8 image
     # TODO: check if image exists
-                  
+            
+    # SMOOTHING
+    #im_smooth=imtools.smooth3ch(im,r=5)
+     
     # diagnose image, create overexpo mask and correct for inhomogen illumination
     diag=diagnostics.diagnostics(im,image_file,vis_diag=False)
     diag.writeDiagnostics(diag_dir)   
@@ -47,7 +49,7 @@ def main(image_file,vis_diag=False):
     Foreground masks
     """                   
     hsv_resize, scale=imtools.imRescaleMaxDim(diag.hsv_corrected,param.middle_size,interpolation = 0)
-    im_resize, scale=imtools.imRescaleMaxDim(diag.im_corrected,param.middle_size,interpolation = 0)
+    #im_resize, scale=imtools.imRescaleMaxDim(diag.im_corrected,param.middle_size,interpolation = 0)
  
     # create foreground mask using previously set init centers
     clust_centers_0, label_0 = segmentations.segment_hsv(hsv_resize, init_centers=diag.cent_init,\
@@ -62,20 +64,18 @@ def main(image_file,vis_diag=False):
 # create segmentation for WBC detection based on hue and saturation
     sat_min=max(np.sort(clust_centers_0[:,0])[0],30)
     #mask=np.logical_and(label_fg_bg>1,np.logical_and(hsv_resize[:,:,0]>diag.h_min_wbc,hsv_resize[:,:,0]<diag.h_max_wbc))
-    mask=np.logical_and(label_fg_bg>1,hsv_resize[:,:,1]>sat_min)
-    if vis_diag:
-        imtools.overlayImage(hsv_resize,mask>0,\
-        (0,1,0),1,vis_diag=vis_diag,fig='wbc_mask')     
-    clust_centers_1, label_1 = segmentations.segment_hsv(hsv_resize, mask=mask,\
+    mask_not_bckg=np.logical_and(label_fg_bg>1,hsv_resize[:,:,1]>sat_min)
+       
+    clust_centers_1, label_1 = segmentations.segment_hsv(hsv_resize, mask=mask_not_bckg,\
                                                     cut_channel=1, chs=(0,0,1),\
                                                     n_clusters=4,\
                                                     vis_diag=vis_diag)   
 
-    mask_wbc_pot=cell_morphology.wbc_masks(im_resize,clust_centers_1,label_1,vis_diag=vis_diag)
+    mask_wbc_pot=cell_morphology.wbc_masks(label_1,clust_centers_1,scale,vis_diag=vis_diag)
     label_wbc=np.zeros(mask_wbc_pot[0].shape,'uint8') 
     # NE,EO; NE,EO; EO,MO; MO,LY
 
-# DETECTION - NE
+# DETECTION - mainly Neutrophil
     cc,num=morphology.label(mask_wbc_pot[1],connectivity=1,return_num=True,background=0)    
     regions = measure.regionprops(cc.astype('int64'))        
     area=np.zeros(len(regions))
@@ -86,7 +86,7 @@ def main(image_file,vis_diag=False):
             if (cc[mask_wbc_pot[0]>0]==r.label).sum()>r.convex_area*0.25:
                 label_wbc[cc==r.label]=1
 
-# DETECTION MONO, LYMPHO and fuzzy EO
+# DETECTION - NE, MONO, LYMPHO and fuzzy EO
     cc,num=morphology.label(mask_wbc_pot[0],connectivity=1,return_num=True,background=0)    
     regions = measure.regionprops(cc.astype('int64'))
     area=np.zeros(len(regions))
@@ -123,21 +123,10 @@ def main(image_file,vis_diag=False):
     
     """
     RBC detection
-    Creating Clear RBC mask with morphology
     """
    
-    mask_fg_clear=cell_morphology.rbc_mask_morphology(im,label_fg_bg_orig,label_tsh=3,vis_diag=vis_diag,fig='31')
-    
-    
-    """
-    Find RBC markers - using dtf and local maximas
-    """
-    
+    mask_fg_clear=cell_morphology.rbc_mask_morphology(im,label_fg_bg_orig,label_tsh=3,vis_diag=vis_diag,fig='31')    
     markers_rbc=cell_morphology.rbc_markers_from_mask(mask_fg_clear)
-    
-#    if vis_diag:
-#        imtools.overlayImage(im,morphology.binary_dilation(markers_rbc>0,morphology.disk(5))>0,\
-#            (1,0,0),0.5,vis_diag=vis_diag,fig='rbc_markers')    
 
     """
     """

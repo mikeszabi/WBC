@@ -90,13 +90,13 @@ def rbc_markers_from_mask(mask_fg_clear):
     
     return markers
 
-def wbc_masks(im,clust_centers_1,label_1,vis_diag=False):
+def wbc_masks(label_1, clust_centers_1,scale,vis_diag=False):
     param=cfg.param()
     # creating masks for labels        
     n=np.zeros(clust_centers_1.shape[0])
     mask_tmps=[]
     for i, c in enumerate(clust_centers_1):
-        mask_tmp=morphology.binary_opening(label_1==i,morphology.disk(1))
+        mask_tmp=morphology.binary_opening(label_1==i,morphology.disk(int(scale*param.cell_bound_pct*param.rbcR)))
         mask_tmps.append(mask_tmp)
         n[i]=mask_tmp.sum()
 #        
@@ -122,11 +122,7 @@ def wbc_masks(im,clust_centers_1,label_1,vis_diag=False):
         
     mask_wbc_pot=[]    
 # TODO: dd parameters
-    mask_wbc_pot.append(morphology.binary_opening(mask_pot_wbc_1,morphology.disk(1)))
-    mask_wbc_pot.append(morphology.binary_opening(mask_pot_wbc_2,morphology.disk(1)))
+    mask_wbc_pot.append(morphology.binary_opening(mask_pot_wbc_1,morphology.disk(int(scale*param.cell_bound_pct*param.rbcR))))
+    mask_wbc_pot.append(morphology.binary_opening(mask_pot_wbc_2,morphology.disk(int(scale*param.cell_bound_pct*param.rbcR))))
 
-    if vis_diag:
-        im_pot=imtools.overlayImage(im,mask_pot_wbc_1,(1,1,0),0.5,vis_diag=vis_diag,fig='potential_wbc')
-        im_pot=imtools.overlayImage(im_pot,mask_pot_wbc_2,(0,1,1),0.5,vis_diag=vis_diag,fig='potential_wbc')
-        
     return mask_wbc_pot

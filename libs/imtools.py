@@ -10,7 +10,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from skimage.transform import rescale
 from skimage.exposure import cumulative_distribution
-from skimage import filters, img_as_ubyte
+from skimage import filters, img_as_ubyte, morphology
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 # colorhist  - works for grayscale and color images
@@ -114,6 +114,10 @@ def getGradientMagnitude(im):
     mag = filters.scharr(im)
     return mag
 
+def smooth3ch(im,r=3):
+    for i in range(im.ndim):
+        im[:,:,i]=filters.median(im[:,:,i].copy(), selem=morphology.disk(r))
+    return im 
 
 def imRescaleMaxDim(im, maxDim, boUpscale = False, interpolation = 1):
     scale = 1.0 * maxDim / max(im.shape[:2])

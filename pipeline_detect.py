@@ -4,7 +4,7 @@ Created on Wed Feb  1 22:13:20 2017
 
 @author: SzMike
 """
-import _init_path
+import __init__
 import os
 import skimage.io as io
 import glob
@@ -15,22 +15,27 @@ import matplotlib.pyplot as plt
 
 import annotations
 import cell_detector
-
 import imtools
 
-#%matplotlib qt5
+#  %matplotlib qt5
  
 ##
 param=cfg.param()
 vis_diag=False
 
-imDirs=os.listdir(param.getTestImageDirs(''))
+data_dir=r'd:\DATA\DiagonAdatbazis_20170221-5'
+# data_dir=None # access test data set
+
+imDirs=os.listdir(param.getImageDirs(data_dir=data_dir))
 print(imDirs)
+
+# SELECT subdir
 i_imDirs=-1
+
 output_dir=param.getOutDir('output')
 diag_dir=param.getOutDir('diag')
 
-image_dir=param.getTestImageDirs(imDirs[i_imDirs])
+image_dir=param.getImageDirs(data_dir=data_dir,dir_name=imDirs[i_imDirs])
 
 included_extenstions = ['*.jpg', '*.bmp', '*.png', '*.gif']
 image_list_indir = []
@@ -39,7 +44,10 @@ for ext in included_extenstions:
 
 for i, image_file in enumerate(image_list_indir):
     print(str(i)+' : '+image_file)
-image_file=image_list_indir[14]
+
+# SELECT a TEST file
+image_file=image_list_indir[1]
+
 detect_stat=[]
 
 for image_file in image_list_indir:
