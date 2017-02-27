@@ -27,7 +27,7 @@ import cell_morphology
 import annotations
 
 
-def batch_cell_detector(image_dir,save_diag=False): 
+def batch_cell_detector(image_dir,save_diag=False,out_dir=''): 
     
     if not os.path.exists(image_dir):
         print('directory does not exists')
@@ -40,9 +40,9 @@ def batch_cell_detector(image_dir,save_diag=False):
         
     for image_file in image_list_indir:    
         print(image_file)
-        cell_detector(image_file,save_diag)
+        cell_detector(image_file,save_diag,out_dir=out_dir)
 
-def cell_detector(image_file,save_diag=False): 
+def cell_detector(image_file,save_diag=False,out_dir=''): 
 
     # OPEN THE image to be processed
     try:
@@ -60,8 +60,8 @@ def cell_detector(image_file,save_diag=False):
     # diagnose image, create overexpo mask and correct for inhomogen illumination
     diag=diagnostics.diagnostics(im,image_file,vis_diag=False)
     
-    output_dir=diag.param.getOutDir(dir_name='output')
-    diag_dir=diag.param.getOutDir(dir_name='diag')
+    output_dir=diag.param.getOutDir(dir_name=os.path.join('output',out_dir))
+    diag_dir=diag.param.getOutDir(dir_name=os.path.join('diag',out_dir))
 
     diag.writeDiagnostics(diag_dir)   
             
@@ -171,10 +171,10 @@ def cell_detector(image_file,save_diag=False):
     CREATE and SAVE DIAGNOSTICS IMAGES
     """
     if save_diag:
-        wbc_mask=imtools.overlayImage(im_resize,mask_sat>0,(1,1,0),0.5,vis_diag=False,fig='wbc_mask')
-        wbc_mask=imtools.overlayImage(wbc_mask,label_wbc>0,(0,1,0),1,vis_diag=vis_diag,fig='wbc_mask')
-        diag.saveDiagImage(wbc_mask,'wbc_nucleus_mask',savedir=diag_dir)
-        
+#        wbc_mask=imtools.overlayImage(im_resize,mask_sat>0,(1,1,0),0.5,vis_diag=False,fig='wbc_mask')
+#        wbc_mask=imtools.overlayImage(wbc_mask,label_wbc>0,(0,1,0),1,vis_diag=vis_diag,fig='wbc_mask')
+#        diag.saveDiagImage(wbc_mask,'wbc_nucleus_mask',savedir=diag_dir)
+#        
         im_wbc=imtools.overlayImage(im,label_wbc_orig>0,(0,1,0),1,vis_diag=vis_diag,fig='wbc')    
         im_detect=imtools.overlayImage(im_wbc,morphology.binary_dilation(markers_rbc>0,morphology.disk(5)),\
                 (1,0,0),1,vis_diag=False,fig='detections')
@@ -202,17 +202,18 @@ if __name__=='__main__':
                     default=None)
     parser.add_argument('-s', action='store', dest='s', type=bool, required=False,
                     default=False)
+    parser.add_argument('-o', action='store', dest='o', type=str, required=False,
+                    default='')
 
     # Parse the arguments
     inargs = parser.parse_args()
     path_str = os.path.abspath(inargs.i)
-    print(path_str)
     
     if inargs.b is None:
         print('Single image process')
-        cell_detector(path_str,save_diag=inargs.s)
+        cell_detector(path_str,save_diag=inargs.s==inargs.s,out_dir=inargs.o)
     else:
         print('Batch execution')
-        batch_cell_detector(path_str,save_diag=inargs.s)    
+        batch_cell_detector(path_str,save_diag=inargs.s==inargs.s,out_dir=inargs.o)    
     sys.exit(1)
   
