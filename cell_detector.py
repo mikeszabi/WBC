@@ -205,6 +205,7 @@ if __name__=='__main__':
     # Parse the arguments
     inargs = parser.parse_args()
     path_str = os.path.abspath(inargs.i)
+    print(path_str)
     
     if inargs.b is None:
         print('Single image process')
