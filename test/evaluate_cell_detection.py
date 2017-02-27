@@ -25,8 +25,7 @@ import cell_detector
 param=cfg.param()
 vis_diag=False
 
-#data_dir=r'd:\DATA\DiagonAdatbazis_20170221-5'
-#data_dir=r'e:\CELLDATA\DiagonAdatbazis_20170221-002'
+# data_dir=r'd:\DATA\DiagonAdatbazis_20170221-5'
 
 #data_dir=None # access test data set
 
@@ -34,7 +33,7 @@ imDirs=os.listdir(param.getImageDirs(data_dir=data_dir))
 print(imDirs)
 
 # SELECT subdir
-i_imDirs=0
+i_imDirs=1
 
 output_dir=param.getOutDir('output')
 diag_dir=param.getOutDir('diag')
@@ -50,7 +49,7 @@ for i, image_file in enumerate(image_list_indir):
     print(str(i)+' : '+image_file)
 
 # SELECT a TEST file
-image_file=image_list_indir[0]
+image_file=image_list_indir[1]
 
 detect_stat=[]
 
@@ -79,9 +78,10 @@ for image_file in image_list_indir:
     else:
         annotations_bb=[]
         n_wbc=-1
+
+    im = io.imread(image_file) # read uint8 image
    
     if vis_diag:
-        im = io.imread(image_file) # read uint8 image
         plt.close('all')
         f=imtools.plotShapes(im,annotations_bb,color='b',text=True)
         f=imtools.plotShapes(im,shapelist,fig=f)
