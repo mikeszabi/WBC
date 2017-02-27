@@ -95,7 +95,7 @@ def cell_detector(image_file,save_diag=False):
        
     clust_centers_1, label_1 = segmentations.segment_hsv(hsv_resize, mask=mask_sat,\
                                                     cut_channel=1, chs=(0,0,0),\
-                                                    n_clusters=8,\
+                                                    n_clusters=3,\
                                                     vis_diag=vis_diag) 
     # find cluster with highest saturation
 
@@ -103,6 +103,7 @@ def cell_detector(image_file,save_diag=False):
     
     clust_sat=np.zeros(len(clust_hue))    
     label_wbc=np.zeros(label_1.shape)
+    
     for i in range(clust_hue.shape[0]):
         hist_hsv=imtools.colorHist(hsv_resize,mask=label_1==i)
         cumh_hsv, siqr_hsv = diag.semi_IQR(hist_hsv) # Semi-Interquartile Range
@@ -110,9 +111,9 @@ def cell_detector(image_file,save_diag=False):
     for i in range(clust_hue.shape[0]):
         if clust_sat[i]==clust_sat.max():
             mask_temp=label_1==i
-            mask_temp=morphology.binary_closing(mask_temp,morphology.disk(3))           
-            mask_temp=morphology.binary_opening(mask_temp,morphology.disk(3)) 
-            mask_temp=morphology.binary_closing(mask_temp,morphology.disk(15))                       
+            mask_temp=morphology.binary_closing(mask_temp,morphology.disk(np.round(1.5*diag.param.cell_bound_pct*diag.param.rbcR*scale)))           
+            mask_temp=morphology.binary_opening(mask_temp,morphology.disk(np.round(2*diag.param.cell_bound_pct*diag.param.rbcR*scale))) 
+            mask_temp=morphology.binary_closing(mask_temp,morphology.disk(np.round(1.5*diag.param.rbcR*scale)))                       
 # TODO: use rbc size for morphology
 # TODO: use component size instead
 #            mask_temp=morphology.binary_opening(mask_temp,morphology.disk(int(scale*diag.param.cell_bound_pct*diag.param.rbcR)))            
