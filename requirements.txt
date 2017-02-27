@@ -1,5 +1,5 @@
 lxml
 matplotlib
 numpy
-scikit-learn
-scipy
+scikit-image
+

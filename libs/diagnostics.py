@@ -8,10 +8,12 @@ Created on Tue Feb  7 17:13:50 2017
 import warnings
 import csv
 import os
+import math
 import numpy as np
 from matplotlib import pyplot as plt
 from skimage import img_as_float, img_as_ubyte
 from skimage.transform import resize
+from skimage import feature
 from skimage.restoration import inpaint
 from skimage.filters import gaussian
 from skimage import morphology
@@ -28,7 +30,7 @@ class diagnostics:
     def __init__(self,im,image_file,vis_diag=False,write=False):
         assert im.ndim==3, 'Not 3 channel image'
         assert im.dtype=='uint8', 'Not byte image'     
-        param=cfg.param()
+        self.param=cfg.param()
         self.vis_diag=vis_diag
         self.image_file=image_file
         self.image_shape=(im.shape[0],im.shape[1])
@@ -39,16 +41,25 @@ class diagnostics:
             warnings.simplefilter("ignore")
             self.hsv = img_as_ubyte(color.rgb2hsv(im))
             l_dim=2 # luminosity dimension in hsv           
-            self.hsv_small, scale = imtools.imRescaleMaxDim(self.hsv, param.small_size, interpolation=0)            
-            self.intensity_im=self.hsv[:,:,l_dim]            
-            self.mask_over=self.overMask(self.intensity_im)            
-            self.cent_init, \
-            bckg_inhomogenity_pct, \
-            self.hsv_corrected, \
-            self.im_corrected=self.illumination_correction()
+            self.hsv_small, scale = imtools.imRescaleMaxDim(self.hsv, self.param.small_size, interpolation=0)            
+        
+        intensity_im=self.hsv[:,:,l_dim]            
+        # Calculate overexposition mask
+        self.mask_over=self.overMask(intensity_im)            
+        # Estimate inhomogen illumination
+        self.cent_init, \
+        bckg_inhomogenity_pct, \
+        self.hsv_corrected, \
+        self.im_corrected=self.illumination_correction()
         
         if self.mask_over.sum()>0:
             imtools.maskOverlay(im,self.mask_over,0.5,vis_diag=self.vis_diag,fig='overexposition mask')
+        
+        # Estimate RBC radius
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            self.gray, scale=imtools.imRescaleMaxDim(self.hsv_corrected[:,:,2], self.param.small_size, interpolation=1)
+        self.param.rbcR=self.blob_detection(self.gray,scale=scale,max_res=100,min_res=50,vis_diag=False)   
         
         self.measures={}
         self.imhists=imtools.colorHist(im,mask=255-self.mask_over,vis_diag=vis_diag,fig='rgb')
@@ -63,8 +74,8 @@ class diagnostics:
         #self.sat_peak=np.argmax(self.hsvhists[1])
 
 # TODO: allow adaptive setting
-        self.h_min_wbc=255*param.wbc_range_in_hue[0]
-        self.h_max_wbc=255*param.wbc_range_in_hue[1]
+        self.h_min_wbc=255*self.param.wbc_range_in_hue[0]
+        self.h_max_wbc=255*self.param.wbc_range_in_hue[1]
 
         minI=np.argwhere(self.cumh_hsv[l_dim]>0.05)[0,0]
         maxI=np.argwhere(self.cumh_hsv[l_dim]>0.95)[0,0]
@@ -81,6 +92,7 @@ class diagnostics:
         self.measures['saturation_q90']=self.sat_q90
         self.measures['saturation_q10']=self.sat_q10
         self.measures['bckg_inhomogenity_pct']=bckg_inhomogenity_pct
+        self.measures['RBC radius']=self.param.rbcR
         
         self.error_list=[]
         self.checks()
@@ -97,6 +109,8 @@ class diagnostics:
             self.error_list.append('saturation_q90')
         if self.measures['saturation_q10']>30:
             self.error_list.append('saturation_q10')
+        if self.measures['RBC radius']<15 or self.measures['RBC radius']>30:
+            self.error_list.append('RBC radius')
         print('Error list:')
         for errors in self.error_list:
             print(errors+' :'+str(self.measures[errors]))
@@ -136,12 +150,44 @@ class diagnostics:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             im_corrected=img_as_ubyte(color.hsv2rgb(hsv_corrected))
-            if self.vis_diag:
-                f=plt.figure('intensity corrected image')
-                ax=f.add_subplot(111)
-                ax.imshow(im_corrected)
+        if self.vis_diag:
+            f=plt.figure('intensity corrected images')
+            ax1=f.add_subplot(121)
+            ax1.imshow(im_corrected)
+            ax2=f.add_subplot(122)
+            ax2.imshow(hsv_corrected)
         return cent_init, bckg_inhomogenity_pct, hsv_corrected, im_corrected
     
+    def blob_detection(self,gray,scale=1,max_res=100,min_res=50,vis_diag=False):
+        
+        blobs = feature.blob_log(gray, min_sigma=max(gray.shape)/max_res, max_sigma=max(gray.shape)/min_res, num_sigma=25, threshold=.05)
+         #    blobs = feature.blob_dog(gray, max_sigma=20, threshold=.1)
+         #    blobs = feature.blob_doh(gray, max_sigma=30, threshold=.005)
+
+        # Compute radii in the 3rd column.
+        blobs[:, 2] = blobs[:, 2] * math.sqrt(2)
+    
+        hist_r,bin_edges=np.histogram(blobs[:,2]/scale,10)
+        rMAX=((bin_edges[np.argmax(hist_r)]+bin_edges[np.argmax(hist_r)+1])/2)
+
+        if vis_diag:
+            fi=plt.figure('blobs')
+            fi.clear()
+            ax1=fi.add_subplot(121)
+            ax1.imshow(gray,cmap='gray')
+            for blob in blobs:
+                y, x, r = blob
+                c = plt.Circle((x, y), r, color='g', linewidth=2, fill=False)
+                ax1.add_patch(c)
+                ax1.set_axis_off()
+            ax2=fi.add_subplot(122)
+            ax2.bar(bin_edges[:-1], hist_r, width = 1)
+            plt.tight_layout()
+            plt.show()
+    
+        return rMAX
+    
+
     def writeDiagnostics(self, savedir=None):
         if savedir is None:
             savedir=os.path.dirname(self.image_file)
@@ -181,18 +227,17 @@ def illumination_inhomogenity_hsv(hsv, mask_bg_sure, vis_diag=False):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         mask=img_as_ubyte(gray_s==0)
-    inpainted =  inpaint.inpaint_biharmonic(gray_s, mask, multichannel=False)
-    inpainted = gaussian(inpainted, 15, mode='reflect')
-    bckg_inhomogenity_pct=1-inpainted.min()/max(inpainted.max(),0)
-    if vis_diag:
-        fi=plt.figure('inhomogen illumination')
-        axi=fi.add_subplot(111)
-        divider = make_axes_locatable(axi)
-        cax = divider.append_axes('right', size='5%', pad=0.05)
-        i=axi.imshow(inpainted,cmap='jet')
-        fi.colorbar(i, cax=cax, orientation='vertical')
-        plt.show()  
-    with warnings.catch_warnings():
+        inpainted =  inpaint.inpaint_biharmonic(gray_s, mask, multichannel=False)
+        inpainted = gaussian(inpainted, 15, mode='reflect')
+        bckg_inhomogenity_pct=1-inpainted.min()/max(inpainted.max(),0)
+        if vis_diag:
+            fi=plt.figure('inhomogen illumination')
+            axi=fi.add_subplot(111)
+            divider = make_axes_locatable(axi)
+            cax = divider.append_axes('right', size='5%', pad=0.05)
+            i=axi.imshow(inpainted,cmap='jet')
+            fi.colorbar(i, cax=cax, orientation='vertical')
+            plt.show()  
         hsv_corrected=img_as_float(hsv)
         hsv_corrected[:,:,2]=hsv_corrected[:,:,2]+1-resize(inpainted, (gray.shape), order = 1)
         hsv_corrected[hsv_corrected>1]=1

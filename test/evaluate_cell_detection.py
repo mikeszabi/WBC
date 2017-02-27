@@ -14,8 +14,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import annotations
-import cell_detector
 import imtools
+
+import cell_detector
+
 
 #  %matplotlib qt5
  
@@ -23,8 +25,8 @@ import imtools
 param=cfg.param()
 vis_diag=False
 
-data_dir=r'd:\DATA\DiagonAdatbazis_20170221-5'
-# data_dir=None # access test data set
+#data_dir=r'd:\DATA\DiagonAdatbazis_20170221-5'
+data_dir=None # access test data set
 
 imDirs=os.listdir(param.getImageDirs(data_dir=data_dir))
 print(imDirs)
@@ -46,7 +48,7 @@ for i, image_file in enumerate(image_list_indir):
     print(str(i)+' : '+image_file)
 
 # SELECT a TEST file
-image_file=image_list_indir[1]
+image_file=image_list_indir[4]
 
 detect_stat=[]
 
@@ -58,7 +60,7 @@ for image_file in image_list_indir:
     """
     RUN automatic detection
     """
-    shapelist=cell_detector.main(image_file)
+    shapelist=cell_detector.cell_detector(image_file,save_diag=True)
     
     """
     READ manual annotations

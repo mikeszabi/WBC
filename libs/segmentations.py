@@ -12,15 +12,14 @@ from sklearn.metrics import pairwise_distances
 from matplotlib import pyplot as plt
 import matplotlib.cm as cm
 from mpl_toolkits.mplot3d import Axes3D
-import cfg
-
 import random
 
 
 def segment_hsv(csp, mask=None, init_centers='k-means++', cut_channel=1, chs=(0,1,2), n_clusters=3, vis_diag=False): 
+    
     ch_names=['Hue','Saturation','Value']
-    param=cfg.param()
-
+    rgb_range_in_hue=((-30/360,30/360), (75/360,135/360), (180/360,240/360))
+    
     if mask is None:
         mask=np.ones(csp.shape[0:2])
     
@@ -34,7 +33,7 @@ def segment_hsv(csp, mask=None, init_centers='k-means++', cut_channel=1, chs=(0,
     Z=Z[:,chs]
     for i, c in enumerate(chs):
         if c==0:
-            cut = 255*np.mean(param.rgb_range_in_hue[cut_channel])   
+            cut = 255*np.mean(rgb_range_in_hue[cut_channel])   
             Z[Z[:,i]<cut,i]=Z[Z[:,i]<cut,i]+cut
     Z_1=Z[Z_mask>0]
 
@@ -72,6 +71,7 @@ def segment_hsv(csp, mask=None, init_centers='k-means++', cut_channel=1, chs=(0,
     lab_all[Z_mask==0]=-1
     lab_all.flat[Z_mask>0]=label
     lab_ok=lab_all.reshape((csp.shape[0:2]))
+    
     if vis_diag:
         imtools.normalize(lab_ok,vis_diag=vis_diag,fig='labels')
    
