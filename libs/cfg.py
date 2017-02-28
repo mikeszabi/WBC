@@ -16,7 +16,7 @@ class param:
         self.cellOpeningPct=0.33
         self.small_size=128
         self.middle_size=512
-        self.cell_bound_pct=0.25
+        self.cell_bound_pct=0.3
         self.over_saturated_rbc_ratio=0.75
         self.rgb_range_in_hue=((-30/360,30/360), (75/360,135/360), (180/360,240/360))
         self.wbc_range_in_hue=(230/360,260/360)

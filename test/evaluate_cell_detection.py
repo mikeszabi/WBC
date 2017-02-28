@@ -49,7 +49,7 @@ for i, image_file in enumerate(image_list_indir):
     print(str(i)+' : '+image_file)
 
 # SELECT a TEST file
-image_file=image_list_indir[1]
+image_file=image_list_indir[20]
 
 detect_stat=[]
 

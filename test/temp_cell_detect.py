@@ -80,17 +80,18 @@ for image_file in image_list_indir:
     #mask_wbc=morphology.binary_opening(mask_wbc,morphology.disk(int(scale*param.cell_bound_pct*param.rbcR)))
     wbc_nuc=imtools.overlayImage(im_resize,mask_sat,(0,1,1),1,vis_diag=False,fig='nuc_mask')
    
-    diag.saveDiagImage(wbc_nuc,'nuc_mask_1',savedir=diag_dir)
+    #diag.saveDiagImage(wbc_nuc,'nuc_mask_1',savedir=diag_dir)
     
     clust_centers_1, label_1 = segmentations.segment_hsv(hsv_resize, mask=mask_sat,\
                                                     cut_channel=1, chs=(0,0,0),\
                                                     n_clusters=4,\
                                                     vis_diag=vis_diag) 
     # find cluster with highest saturation
-
+    print(diag.param.rbcR)
     clust_hue=clust_centers_1[:,0]
     
     clust_sat=np.zeros(len(clust_hue))    
+    mask_wbc=np.zeros(label_1.shape)
     label_wbc=np.zeros(label_1.shape)
     for i in range(clust_hue.shape[0]):
         hist_hsv=imtools.colorHist(hsv_resize,mask=label_1==i)
@@ -98,16 +99,18 @@ for image_file in image_list_indir:
         clust_sat[i]=np.argwhere(cumh_hsv[1]>0.99)[0,0]
     for i in range(clust_hue.shape[0]):
         if clust_sat[i]==clust_sat.max():
+            mask_wbc[label_1==i]=1
             mask_temp=label_1==i
-            #mask_temp=morphology.binary_opening(mask_temp,morphology.disk(int(scale*diag.param.cell_bound_pct*diag.param.rbcR)))            
+            mask_temp=morphology.binary_opening(mask_temp,morphology.disk(np.ceil(scale*diag.param.cell_bound_pct*diag.param.rbcR)))            
+            mask_temp=morphology.binary_closing(mask_temp,morphology.disk(np.ceil(0.75*scale*diag.param.rbcR)))            
             label_wbc[mask_temp]=1
 
 # TODO use regionprops on mask size
     
     #diag.param.cell_bound_pct=0.2
     #mask_wbc=morphology.binary_opening(mask_wbc,morphology.disk(int(scale*diag.param.cell_bound_pct*param.rbcR)))
-    
-    wbc_nuc_2=imtools.overlayImage(im_resize,label_wbc>0,(1,0,1),1,vis_diag=False,fig='nuc_mask_2')
+    wbc_nuc_2=imtools.overlayImage(im_resize,mask_wbc>0,(1,1,0),0.5,vis_diag=False,fig='nuc_mask_2')   
+    wbc_nuc_2=imtools.overlayImage(wbc_nuc_2,label_wbc>0,(0,1,0),1,vis_diag=vis_diag,fig='nuc_mask_2')
    
     diag.saveDiagImage(wbc_nuc_2,'nuc_mask_2',savedir=diag_dir)
     

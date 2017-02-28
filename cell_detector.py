@@ -43,8 +43,10 @@ def batch_cell_detector(image_dir,save_diag=False,out_dir=''):
         cell_detector(image_file,save_diag,out_dir=out_dir)
 
 def cell_detector(image_file,save_diag=False,out_dir=''): 
-
-    # OPEN THE image to be processed
+    
+    vis_diag=False
+    
+# OPEN THE image to be processed
     try:
         im = io.imread(image_file) # read uint8 image
     except Exception:
@@ -52,33 +54,31 @@ def cell_detector(image_file,save_diag=False,out_dir=''):
         return []
     if im.ndim!=3:
         print('not color image')
-        return []
-    
-    vis_diag=False
+        return []    
    
-    # SET THE PARAMETERS and DO DIAGNOSTICS
-    # diagnose image, create overexpo mask and correct for inhomogen illumination
-    diag=diagnostics.diagnostics(im,image_file,vis_diag=False)
+# SET THE PARAMETERS and DO DIAGNOSTICS
+# diagnose image, create overexpo mask and correct for inhomogen illumination
+    diag=diagnostics.diagnostics(im,image_file,vis_diag=vis_diag)
     
     output_dir=diag.param.getOutDir(dir_name=os.path.join('output',out_dir))
     diag_dir=diag.param.getOutDir(dir_name=os.path.join('diag',out_dir))
 
     diag.writeDiagnostics(diag_dir)   
             
-    # SMOOTHING
-    #im_smooth=imtools.smooth3ch(im,r=5)
-     
+# SMOOTHING
+#im_smooth=imtools.smooth3ch(im,r=5)
+ 
     """
     Foreground masks
     """  
-    # SMOOTHING
-    #hsv_smooth=imtools.smooth3ch(diag.hsv_corrected,r=5)         
-    
+# SMOOTHING
+#hsv_smooth=imtools.smooth3ch(diag.hsv_corrected,r=5)         
+
     
     hsv_resize, scale=imtools.imRescaleMaxDim(diag.hsv_corrected,diag.param.middle_size,interpolation = 0)
     im_resize, scale=imtools.imRescaleMaxDim(diag.im_corrected,diag.param.middle_size,interpolation = 0)
  
-    # create foreground mask using previously set init centers
+# create foreground mask using previously set init centers
     clust_centers_0, label_0 = segmentations.segment_hsv(hsv_resize, init_centers=diag.cent_init,\
                                                          chs=(1,1,2),\
                                                          n_clusters=4,\
@@ -88,16 +88,14 @@ def cell_detector(image_file,save_diag=False,out_dir=''):
     """
     WBC nucleus masks
     """
-    # create segmentation for WBC detection based on hue and saturation
+# create segmentation for WBC detection based on hue and saturation
     mask_sat=hsv_resize[:,:,1]>diag.sat_q90
-    
-    #mask_wbc=morphology.binary_opening(mask_wbc,morphology.disk(int(scale*param.cell_bound_pct*param.rbcR)))
-       
+           
     clust_centers_1, label_1 = segmentations.segment_hsv(hsv_resize, mask=mask_sat,\
                                                     cut_channel=1, chs=(0,0,0),\
                                                     n_clusters=3,\
                                                     vis_diag=vis_diag) 
-    # find cluster with highest saturation
+# find cluster with highest saturation
 
     clust_hue=clust_centers_1[:,0]
     
@@ -111,16 +109,15 @@ def cell_detector(image_file,save_diag=False,out_dir=''):
     for i in range(clust_hue.shape[0]):
         if clust_sat[i]==clust_sat.max():
             mask_temp=label_1==i
-            mask_temp=morphology.binary_closing(mask_temp,morphology.disk(np.round(1.0*diag.param.cell_bound_pct*diag.param.rbcR*scale)))           
-            mask_temp=morphology.binary_opening(mask_temp,morphology.disk(np.round(1.5*diag.param.cell_bound_pct*diag.param.rbcR*scale))) 
-            mask_temp=morphology.binary_closing(mask_temp,morphology.disk(np.round(1.0*diag.param.rbcR*scale)))                       
+            mask_temp=label_1==i
+            mask_temp=morphology.binary_opening(mask_temp,morphology.disk(np.ceil(scale*diag.param.cell_bound_pct*diag.param.rbcR)))            
+            mask_temp=morphology.binary_closing(mask_temp,morphology.disk(np.ceil(0.75*scale*diag.param.rbcR)))            
 # TODO: use component size - region props instead
-#            mask_temp=morphology.binary_opening(mask_temp,morphology.disk(int(scale*diag.param.cell_bound_pct*diag.param.rbcR)))            
             label_wbc[mask_temp]=1
 #        if clust_hue[i]>diag.param.wbc_range_in_hue[0]*255 and\
 #            clust_hue[i]<diag.param.wbc_range_in_hue[1]*255:
 #            mask_nuc_2[label_1==i]=1    
-   # TODO: add clust_hue to diagnostics
+# TODO: add clust_hue to diagnostics
     """
     RESIZE MASKS TO ORIGINAL
     """
@@ -137,7 +134,7 @@ def cell_detector(image_file,save_diag=False,out_dir=''):
     mask_fg_clear=cell_morphology.rbc_mask_morphology(im,label_fg_bg_orig,diag.param,label_tsh=3,vis_diag=vis_diag,fig='31')    
     markers_rbc=cell_morphology.rbc_markers_from_mask(mask_fg_clear,diag.param)
 
-    # TODO: connected component analysis - check if n_RBC can be deduced from component size
+# TODO: connected component analysis - check if n_RBC can be deduced from component size
 
     """
     """
@@ -170,10 +167,6 @@ def cell_detector(image_file,save_diag=False,out_dir=''):
     CREATE and SAVE DIAGNOSTICS IMAGES
     """
     if save_diag:
-#        wbc_mask=imtools.overlayImage(im_resize,mask_sat>0,(1,1,0),0.5,vis_diag=False,fig='wbc_mask')
-#        wbc_mask=imtools.overlayImage(wbc_mask,label_wbc>0,(0,1,0),1,vis_diag=vis_diag,fig='wbc_mask')
-#        diag.saveDiagImage(wbc_mask,'wbc_nucleus_mask',savedir=diag_dir)
-#        
         im_wbc=imtools.overlayImage(im,label_wbc_orig>0,(0,1,0),1,vis_diag=vis_diag,fig='wbc')    
         im_detect=imtools.overlayImage(im_wbc,morphology.binary_dilation(markers_rbc>0,morphology.disk(5)),\
                 (1,0,0),1,vis_diag=False,fig='detections')
@@ -191,7 +184,7 @@ def cell_detector(image_file,save_diag=False,out_dir=''):
     return shapelist
 
 if __name__=='__main__':
-    # Initialize argument parse object
+# Initialize argument parse object
     parser = argparse.ArgumentParser()
 
     # This would be an argument you could pass in from command line
@@ -204,7 +197,7 @@ if __name__=='__main__':
     parser.add_argument('-o', action='store', dest='o', type=str, required=False,
                     default='')
 
-    # Parse the arguments
+# Parse the arguments
     inargs = parser.parse_args()
     path_str = os.path.abspath(inargs.i)
     

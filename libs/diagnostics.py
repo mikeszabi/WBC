@@ -167,7 +167,7 @@ class diagnostics:
         # Compute radii in the 3rd column.
         blobs[:, 2] = blobs[:, 2] * math.sqrt(2)
     
-        hist_r,bin_edges=np.histogram(blobs[:,2]/scale,10)
+        hist_r,bin_edges=np.histogram(blobs[:,2]/scale,bins=np.linspace(0,50,26))
         rMAX=((bin_edges[np.argmax(hist_r)]+bin_edges[np.argmax(hist_r)+1])/2)
 
         if vis_diag:
