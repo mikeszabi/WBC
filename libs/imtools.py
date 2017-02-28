@@ -142,7 +142,7 @@ def plotShapes(im, shapelist, detect_shapes='ALL',color='g', text='ALL', fig=Non
         if detect_shapes=='ALL' or shape[0] in detect_shapes:           
             axs.plot(pts[:,0], pts[:,1], markersize =2, color=color, marker='.')
         if text=='ALL' or shape[0] in text:   
-            axs.annotate(shape[0],size=4,xy=(np.mean(pts[:,0]), np.mean(pts[:, 1])),bbox=dict(boxstyle="round", fc="white", ec=color, lw=1),color=color)
+            axs.annotate(shape[0],size=5,xy=(pts[0,0], pts[0, 1]),bbox=dict(boxstyle="round", fc="White", ec=color, lw=1),color=color)
     return fig
     
 def histogram_similarity(hist, reference_hist):

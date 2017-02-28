@@ -20,9 +20,16 @@ import imtools
 def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
     
     plt.ioff()
-    # xml is at image file location
-    image_list_indir=[]
+
+    wbc_types={'bne':'Band neutrophiles',\
+               'ne':'Segmented neutrophiles',\
+               'eo':'Eosinophiles',\
+               'ba':'Basophiles',\
+               'mo':'Monocytes',\
+               'ly':'Lymphocytes'}
+
     included_extenstions = ['*.jpg', '*.bmp', '*.png', '*.gif']
+
     image_list_indir = []
     for ext in included_extenstions:
         image_list_indir.extend(glob.glob(os.path.join(image_dir, ext)))
@@ -31,8 +38,9 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
     for i, image_file in enumerate(image_list_indir):
         print(str(i)+' : '+image_file)
         """
-        READ auto annotations
+        READ manual annotations
         """ 
+        n_wbc=0
         head, tail=os.path.splitext(image_file)
         xml_file_1=head+'.xml'
         if os.path.isfile(xml_file_1):
@@ -41,9 +49,9 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
                 annotations_bb=xmlReader.getShapes()
                 n_wbc=len(annotations_bb)
             except:
-                continue
+                annotations_bb=[]
         else:
-            continue
+            annotations_bb=[]
         """
         READ auto annotations
         """            
@@ -54,11 +62,10 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
             try:
                 xmlReader = annotations.AnnotationReader(xml_file_2)
                 shapelist=xmlReader.getShapes()
-                n_wbc=len(annotations_bb)
             except:
-                continue
+                shapelist=[]
         else:
-            continue
+            shapelist=[]
           
         """
         READ image
@@ -67,8 +74,12 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
    
         if save_diag:
             fig = plt.figure(dpi=300)
-            fig=imtools.plotShapes(im,annotations_bb,color='b',text='ALL',fig=fig)
-            fig=imtools.plotShapes(im,shapelist,detect_shapes='ALL',color='r',text=('WBC'),fig=fig)
+            # Plot manual
+            fig=imtools.plotShapes(im,annotations_bb,color='b',\
+                                   detect_shapes=list(wbc_types.keys()),text='ALL',fig=fig)
+            # Plot automatic
+            fig=imtools.plotShapes(im,shapelist,color='r',\
+                                   detect_shapes='ALL',text=('WBC'),fig=fig)
             head, tail = str.split(xml_file_2,'.')
             detect_image_file=os.path.join(head+'_annotations.jpg')
             fig.savefig(detect_image_file,dpi=300)
@@ -81,23 +92,25 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
 #        x, y = x.flatten(), y.flatten()
 #        points = np.vstack((x,y)).T
         
-        n_wbc_detected=0
-        n_wbc_matched=0
-        for each_shape in shapelist:
-            if each_shape[0]=='WBC':
-                n_wbc_detected+=1;
-                for each_bb in annotations_bb:
-                    bb=Path(each_bb[2])
-                    intersect = bb.contains_points(each_shape[2])    
-                    if intersect.sum()>0:
-                        p_over=intersect.sum()/len(each_shape[2])
-                        n_wbc_matched+=p_over
-                        annotations_bb.remove(each_bb)
-                        break
-                        
-        detect_stat.append((image_file,n_wbc,n_wbc_detected,n_wbc_matched))    
+        if (shapelist) and (annotations_bb):       
+                           
+            n_wbc_detected=0
+            n_wbc_matched=0
+            for each_shape in shapelist:
+                if each_shape[0]=='WBC':
+                    n_wbc_detected+=1;
+                    for each_bb in annotations_bb:
+                        bb=Path(each_bb[2])
+                        intersect = bb.contains_points(each_shape[2])    
+                        if intersect.sum()>0:
+                            p_over=intersect.sum()/len(each_shape[2])
+                            n_wbc_matched+=p_over
+                            annotations_bb.remove(each_bb)
+                            break
+                            
+            detect_stat.append((image_file,n_wbc,n_wbc_detected,n_wbc_matched))    
  
-    n_images=i+1
+    n_images=len(image_list_indir)
     n_wbc=[]
     n_wbc_detected=[]
     n_wbc_matched=[]    
@@ -107,7 +120,7 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
         n_wbc_matched.append(stats[3])
         
     print('images in dir:'+str(n_images))
-    print('images with annotation:'+str(len(detect_stat)))
+    print('images with manual and automatic annotations:'+str(len(detect_stat)))
     print('n wbc total:'+str(sum(n_wbc)))
     print('n wbc detected total:'+str(sum(n_wbc_detected)))
     print('n wbc matched total:'+str(sum(n_wbc_matched)))

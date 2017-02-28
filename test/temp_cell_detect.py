@@ -78,13 +78,13 @@ for image_file in image_list_indir:
                                            hsv_resize[:,:,1]>diag.sat_q90)
     
     #mask_wbc=morphology.binary_opening(mask_wbc,morphology.disk(int(scale*param.cell_bound_pct*param.rbcR)))
-    wbc_nuc=imtools.overlayImage(im_resize,mask_nuc,(0,1,1),1,vis_diag=True,fig='nuc_mask')
+    wbc_nuc=imtools.overlayImage(im_resize,mask_sat,(0,1,1),1,vis_diag=True,fig='nuc_mask')
    
     diag.saveDiagImage(wbc_nuc,'nuc_mask_1',savedir=diag_dir)
     
     clust_centers_1, label_1 = segmentations.segment_hsv(hsv_resize, mask=mask_sat,\
                                                     cut_channel=1, chs=(0,0,0),\
-                                                    n_clusters=6,\
+                                                    n_clusters=4,\
                                                     vis_diag=vis_diag) 
     # find cluster with highest saturation
 
@@ -99,7 +99,7 @@ for image_file in image_list_indir:
     for i in range(clust_hue.shape[0]):
         if clust_sat[i]==clust_sat.max():
             mask_temp=label_1==i
-            mask_temp=morphology.binary_opening(mask_temp,morphology.disk(int(scale*diag.param.cell_bound_pct*diag.param.rbcR)))            
+            #mask_temp=morphology.binary_opening(mask_temp,morphology.disk(int(scale*diag.param.cell_bound_pct*diag.param.rbcR)))            
             label_wbc[mask_temp]=1
     
     #diag.param.cell_bound_pct=0.2
