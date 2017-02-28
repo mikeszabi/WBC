@@ -111,11 +111,10 @@ def cell_detector(image_file,save_diag=False,out_dir=''):
     for i in range(clust_hue.shape[0]):
         if clust_sat[i]==clust_sat.max():
             mask_temp=label_1==i
-            mask_temp=morphology.binary_closing(mask_temp,morphology.disk(np.round(1.5*diag.param.cell_bound_pct*diag.param.rbcR*scale)))           
-            mask_temp=morphology.binary_opening(mask_temp,morphology.disk(np.round(2*diag.param.cell_bound_pct*diag.param.rbcR*scale))) 
-            mask_temp=morphology.binary_closing(mask_temp,morphology.disk(np.round(1.5*diag.param.rbcR*scale)))                       
-# TODO: use rbc size for morphology
-# TODO: use component size instead
+            mask_temp=morphology.binary_closing(mask_temp,morphology.disk(np.round(1.0*diag.param.cell_bound_pct*diag.param.rbcR*scale)))           
+            mask_temp=morphology.binary_opening(mask_temp,morphology.disk(np.round(1.5*diag.param.cell_bound_pct*diag.param.rbcR*scale))) 
+            mask_temp=morphology.binary_closing(mask_temp,morphology.disk(np.round(1.0*diag.param.rbcR*scale)))                       
+# TODO: use component size - region props instead
 #            mask_temp=morphology.binary_opening(mask_temp,morphology.disk(int(scale*diag.param.cell_bound_pct*diag.param.rbcR)))            
             label_wbc[mask_temp]=1
 #        if clust_hue[i]>diag.param.wbc_range_in_hue[0]*255 and\

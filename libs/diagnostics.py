@@ -59,7 +59,7 @@ class diagnostics:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             self.gray, scale=imtools.imRescaleMaxDim(self.hsv_corrected[:,:,2], self.param.small_size, interpolation=1)
-        self.param.rbcR=self.blob_detection(self.gray,scale=scale,max_res=100,min_res=50,vis_diag=False)   
+        self.param.rbcR=self.blob_detection(255-self.gray,scale=scale,max_res=100,min_res=50,vis_diag=vis_diag)   
         
         self.measures={}
         self.imhists=imtools.colorHist(im,mask=255-self.mask_over,vis_diag=vis_diag,fig='rgb')

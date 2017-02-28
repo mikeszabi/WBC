@@ -78,7 +78,7 @@ for image_file in image_list_indir:
                                            hsv_resize[:,:,1]>diag.sat_q90)
     
     #mask_wbc=morphology.binary_opening(mask_wbc,morphology.disk(int(scale*param.cell_bound_pct*param.rbcR)))
-    wbc_nuc=imtools.overlayImage(im_resize,mask_sat,(0,1,1),1,vis_diag=True,fig='nuc_mask')
+    wbc_nuc=imtools.overlayImage(im_resize,mask_sat,(0,1,1),1,vis_diag=False,fig='nuc_mask')
    
     diag.saveDiagImage(wbc_nuc,'nuc_mask_1',savedir=diag_dir)
     
@@ -101,11 +101,13 @@ for image_file in image_list_indir:
             mask_temp=label_1==i
             #mask_temp=morphology.binary_opening(mask_temp,morphology.disk(int(scale*diag.param.cell_bound_pct*diag.param.rbcR)))            
             label_wbc[mask_temp]=1
+
+# TODO use regionprops on mask size
     
     #diag.param.cell_bound_pct=0.2
     #mask_wbc=morphology.binary_opening(mask_wbc,morphology.disk(int(scale*diag.param.cell_bound_pct*param.rbcR)))
     
-    wbc_nuc_2=imtools.overlayImage(im_resize,label_wbc>0,(1,0,1),1,vis_diag=True,fig='nuc_mask_2')
+    wbc_nuc_2=imtools.overlayImage(im_resize,label_wbc>0,(1,0,1),1,vis_diag=False,fig='nuc_mask_2')
    
     diag.saveDiagImage(wbc_nuc_2,'nuc_mask_2',savedir=diag_dir)
     

@@ -26,7 +26,9 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
                'eo':'Eosinophiles',\
                'ba':'Basophiles',\
                'mo':'Monocytes',\
-               'ly':'Lymphocytes'}
+               'ly':'Lymphocytes',\
+               'lgly':'Large granular lymphocytes',\
+               'rly':'Reactive lymphocytes'}
 
     included_extenstions = ['*.jpg', '*.bmp', '*.png', '*.gif']
 
@@ -40,14 +42,12 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
         """
         READ manual annotations
         """ 
-        n_wbc=0
         head, tail=os.path.splitext(image_file)
         xml_file_1=head+'.xml'
         if os.path.isfile(xml_file_1):
             try:
                 xmlReader = annotations.AnnotationReader(xml_file_1)
                 annotations_bb=xmlReader.getShapes()
-                n_wbc=len(annotations_bb)
             except:
                 annotations_bb=[]
         else:
@@ -93,20 +93,26 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
 #        points = np.vstack((x,y)).T
         
         if (shapelist) and (annotations_bb):       
-                           
+            
+            n_wbc=0
+            for each_bb in annotations_bb:
+                if each_bb[0] in list(wbc_types.keys()):
+                    n_wbc+=1
+                    
             n_wbc_detected=0
             n_wbc_matched=0
             for each_shape in shapelist:
                 if each_shape[0]=='WBC':
                     n_wbc_detected+=1;
                     for each_bb in annotations_bb:
-                        bb=Path(each_bb[2])
-                        intersect = bb.contains_points(each_shape[2])    
-                        if intersect.sum()>0:
-                            p_over=intersect.sum()/len(each_shape[2])
-                            n_wbc_matched+=p_over
-                            annotations_bb.remove(each_bb)
-                            break
+                        if each_bb[0] in list(wbc_types.keys()):
+                            bb=Path(each_bb[2])
+                            intersect = bb.contains_points(each_shape[2])    
+                            if intersect.sum()>0:
+                                p_over=intersect.sum()/len(each_shape[2])
+                                n_wbc_matched+=p_over
+                                annotations_bb.remove(each_bb)
+                                break
                             
             detect_stat.append((image_file,n_wbc,n_wbc_detected,n_wbc_matched))    
  

@@ -33,7 +33,7 @@ imDirs=os.listdir(param.getImageDirs(data_dir=data_dir))
 print(imDirs)
 
 # SELECT subdir
-i_imDirs=1
+i_imDirs=-1
 
 output_dir=param.getOutDir('output')
 diag_dir=param.getOutDir('diag')
