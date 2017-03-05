@@ -27,7 +27,7 @@ vis_diag=False
 
 # data_dir=r'd:\DATA\DiagonAdatbazis_20170221-5'
 
-#data_dir=None # access test data set
+data_dir=None # access test data set
 
 imDirs=os.listdir(param.getImageDirs(data_dir=data_dir))
 print(imDirs)
@@ -49,7 +49,7 @@ for i, image_file in enumerate(image_list_indir):
     print(str(i)+' : '+image_file)
 
 # SELECT a TEST file
-image_file=image_list_indir[20]
+image_file=image_list_indir[10]
 
 detect_stat=[]
 
