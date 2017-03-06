@@ -50,3 +50,62 @@ ax2.bar(bin_edges[:-1], hist_r, width = 1)
 plt.tight_layout()
 plt.show()
     
+
+##
+
+min_sigma=max(mask_fg_clear.shape)/100
+max_sigma=max(mask_fg_clear.shape)/25
+
+from scipy import ndimage
+#k=morphology.disk(5)
+#c=ndimage.convolve((mask_fg_clear).astype('float64'), k, mode='constant', cval=0.0)             
+#             
+image = (mask_fg_clear).astype('float64')
+
+#if log_scale:
+#    start, stop = log(min_sigma, 10), log(max_sigma, 10)
+#    sigma_list = np.logspace(start, stop, num_sigma)
+#else:
+r_list = np.linspace(min_sigma, max_sigma, 15)
+
+# computing gaussian laplace
+# s**2 provides scale invariance
+gl_images = [ndimage.convolve(image, morphology.disk(r))/(r**2) for r in r_list]
+image_cube = np.dstack(gl_images)
+#image_cube+=(np.random.random(image_cube.size)/100).reshape(image_cube.shape)
+
+
+threshold=3
+
+local_maxima = feature.peak_local_max(image_cube, threshold_abs=threshold,
+                              footprint=np.ones((9,9, 5)),
+                              threshold_rel=0.0,
+                              exclude_border=False)
+
+lm = local_maxima.astype(np.float64)
+# Convert the last index to its corresponding scale value
+lm[:, 2] = r_list[local_maxima[:, 2]]
+blobs = lm
+
+hist_r,bin_edges=np.histogram(blobs[:,2]/scale,10)
+hist_r=hist_r[1:-1]
+bin_edges=bin_edges[1:-1]
+rMAX=((bin_edges[np.argmax(hist_r)]+bin_edges[np.argmax(hist_r)+1])/2)
+
+
+blobs_2=blobs[np.logical_and(blobs[:,2]>2,blobs[:,2]<30),:]
+
+
+fi=plt.figure('blobs')
+fi.clear()
+ax1=fi.add_subplot(121)
+ax1.imshow(mask_fg_clear,cmap='gray')
+for blob in blobs:
+    y, x, r = blob
+    c = plt.Circle((x, y), r, color='g', linewidth=2, fill=False)
+    ax1.add_patch(c)
+    ax1.set_axis_off()
+ax2=fi.add_subplot(122)
+ax2.bar(bin_edges[:-1], hist_r, width = 1)
+plt.tight_layout()
+plt.show()
