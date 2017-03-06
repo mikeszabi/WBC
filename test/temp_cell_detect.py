@@ -16,9 +16,12 @@ import skimage.io as io
 import numpy as np;
 from skimage.transform import resize
 from skimage import filters
+import glob
+
 
 from skimage import measure
 from skimage import img_as_ubyte
+from matplotlib import pyplot as plt
 
 # %matplotlib qt5
  
@@ -31,7 +34,17 @@ import annotations
 
 %matplotlib qt5
 
-image_file=image_list_indir[16]
+image_dir=r'e:\WBC\data\Test\WBC Types\Problem'
+included_extenstions = ['*.jpg', '*.bmp', '*.png', '*.gif']
+image_list_indir = []
+for ext in included_extenstions:
+   image_list_indir.extend(glob.glob(os.path.join(image_dir, ext)))
+
+for i, image_file in enumerate(image_list_indir):
+    print(str(i)+' : '+image_file)
+
+
+image_file=image_list_indir[2]
 
 vis_diag=False
 
@@ -39,14 +52,12 @@ for image_file in image_list_indir:
 
     print(image_file)
     
-    
-    output_dir=param.getOutDir(dir_name='output')
-    diag_dir=param.getOutDir(dir_name='diag')
+
     
     # READ THE IMAGE
     im = io.imread(image_file) # read uint8 image
    
-    diag=diagnostics.diagnostics(im,image_file,vis_diag=vis_diag)
+    diag=diagnostics.diagnostics(im,image_file,vis_diag=False)
     
     output_dir=diag.param.getOutDir(dir_name='output')
     diag_dir=diag.param.getOutDir(dir_name='diag')
@@ -78,7 +89,7 @@ for image_file in image_list_indir:
                                            hsv_resize[:,:,1]>diag.sat_q90)
     
     #mask_wbc=morphology.binary_opening(mask_wbc,morphology.disk(int(scale*param.cell_bound_pct*param.rbcR)))
-    wbc_nuc=imtools.overlayImage(im_resize,mask_sat,(0,1,1),1,vis_diag=False,fig='nuc_mask')
+    wbc_nuc=imtools.overlayImage(im_resize,mask_sat,(0,1,1),1,vis_diag=True,fig='nuc_mask')
    
     #diag.saveDiagImage(wbc_nuc,'nuc_mask_1',savedir=diag_dir)
     
@@ -98,12 +109,30 @@ for image_file in image_list_indir:
         cumh_hsv, siqr_hsv = diag.semi_IQR(hist_hsv) # Semi-Interquartile Range
         clust_sat[i]=np.argwhere(cumh_hsv[1]>0.99)[0,0]
     for i in range(clust_hue.shape[0]):
-        if clust_sat[i]==clust_sat.max():
+        if clust_sat[i]>(clust_sat.max()+diag.sat_q90)/2:
             mask_wbc[label_1==i]=1
             mask_temp=label_1==i
             mask_temp=morphology.binary_opening(mask_temp,morphology.disk(np.ceil(scale*diag.param.cell_bound_pct*diag.param.rbcR)))            
             mask_temp=morphology.binary_closing(mask_temp,morphology.disk(np.ceil(0.75*scale*diag.param.rbcR)))            
             label_wbc[mask_temp]=1
+
+    """
+    RESIZE MASKS TO ORIGINAL
+    """
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")    
+        label_fg_bg_orig = img_as_ubyte(resize(label_fg_bg,diag.image_shape, order = 0))
+        label_wbc_orig = img_as_ubyte(resize(label_wbc,diag.image_shape, order = 0))
+        label_fg_bg_orig[label_wbc_orig>0]=0
+    
+    """
+    RBC detection
+    """
+   
+    mask_fg_clear=cell_morphology.rbc_mask_morphology(im,label_fg_bg_orig,diag.param,label_tsh=3,vis_diag=vis_diag,fig='31')    
+    
+    
+    markers_rbc=cell_morphology.rbc_markers_from_mask(mask_fg_clear,diag.param)
 
 # TODO use regionprops on mask size
     
