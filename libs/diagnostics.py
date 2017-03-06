@@ -55,15 +55,9 @@ class diagnostics:
         if self.mask_over.sum()>0:
             imtools.maskOverlay(im,self.mask_over,0.5,vis_diag=self.vis_diag,fig='overexposition mask')
         
-        # Estimate RBC radius
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            self.gray, scale=imtools.imRescaleMaxDim(self.hsv_corrected[:,:,2], self.param.small_size, interpolation=1)
-        self.param.rbcR=self.blob_detection(255-self.gray,scale=scale,max_res=100,min_res=50,vis_diag=vis_diag)   
-        
         self.measures={}
-        self.imhists=imtools.colorHist(im,mask=255-self.mask_over,vis_diag=vis_diag,fig='rgb')
-        self.hsvhists=imtools.colorHist(self.hsv,mask=255-self.mask_over,vis_diag=vis_diag,fig='hsv')
+        self.imhists=imtools.colorHist(im,mask=255-self.mask_over,vis_diag=False,fig='rgb')
+        self.hsvhists=imtools.colorHist(self.hsv,mask=255-self.mask_over,vis_diag=False,fig='hsv')
         
         self.cumh_rgb, self.siqr_rgb = self.semi_IQR(self.imhists) # Semi-Interquartile Range
         self.cumh_hsv, self.siqr_hsv = self.semi_IQR(self.hsvhists) # Semi-Interquartile Range
@@ -72,6 +66,8 @@ class diagnostics:
         self.sat_q90=np.argwhere(cumh>0.9)[0,0]
         self.sat_q10=np.argwhere(cumh>0.1)[0,0]
         #self.sat_peak=np.argmax(self.hsvhists[1])
+        
+        ch_maxvar=np.argmax(self.siqr_rgb)
 
 # TODO: allow adaptive setting
         self.h_min_wbc=255*self.param.wbc_range_in_hue[0]
@@ -79,10 +75,20 @@ class diagnostics:
 
         minI=np.argwhere(self.cumh_hsv[l_dim]>0.05)[0,0]
         maxI=np.argwhere(self.cumh_hsv[l_dim]>0.95)[0,0]
+        
+         # Estimate RBC radius
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+# TODO: use rgb cahnnel with max siqr, adjust threshold based on siqr
+            self.gray, scale=imtools.imRescaleMaxDim(self.im_corrected[:,:,ch_maxvar], self.param.small_size, interpolation=0)
+        self.param.rbcR=self.blob_detection(255-self.gray,scale=scale,max_res=150,min_res=10,\
+                                            threshold=0.5*self.siqr_rgb[ch_maxvar]/255, vis_diag=vis_diag)   
+        
+        # fill up measures
                                                                           
         self.measures['siqr_rgb']=self.siqr_rgb
         self.measures['siqr_hsv']=self.siqr_hsv
-        self.measures['ch_maxvar']=np.argmax(self.siqr_rgb) # channel with maximal variability
+        self.measures['ch_maxvar']=ch_maxvar # channel with maximal variability
         self.measures['maxI']=maxI.astype('float64')
         self.measures['minI']=minI.astype('float64')
         self.measures['contrast']=(self.measures['maxI']-self.measures['minI'])/(self.measures['maxI']+self.measures['minI'])
@@ -105,11 +111,11 @@ class diagnostics:
             self.error_list.append('contrast')
         if self.measures['overexpo_pct']>0.1:
             self.error_list.append('overexpo_pct')
-        if self.measures['saturation_q90']<100:
+        if self.measures['saturation_q90']<80:
             self.error_list.append('saturation_q90')
         if self.measures['saturation_q10']>30:
             self.error_list.append('saturation_q10')
-        if self.measures['RBC radius']<15 or self.measures['RBC radius']>30:
+        if self.measures['RBC radius']<15 or self.measures['RBC radius']>50:
             self.error_list.append('RBC radius')
         print('Error list:')
         for errors in self.error_list:
@@ -158,16 +164,19 @@ class diagnostics:
             ax2.imshow(hsv_corrected)
         return cent_init, bckg_inhomogenity_pct, hsv_corrected, im_corrected
     
-    def blob_detection(self,gray,scale=1,max_res=100,min_res=50,vis_diag=False):
+    def blob_detection(self,gray,scale=1,threshold=0.1, max_res=100,min_res=10,vis_diag=False):
         
-        blobs = feature.blob_log(gray, min_sigma=max(gray.shape)/max_res, max_sigma=max(gray.shape)/min_res, num_sigma=25, threshold=.05)
+        blobs = feature.blob_log(gray, min_sigma=max(gray.shape)/max_res, max_sigma=max(gray.shape)/min_res,\
+                                 num_sigma=20, threshold=threshold, overlap=1)
          #    blobs = feature.blob_dog(gray, max_sigma=20, threshold=.1)
          #    blobs = feature.blob_doh(gray, max_sigma=30, threshold=.005)
 
         # Compute radii in the 3rd column.
         blobs[:, 2] = blobs[:, 2] * math.sqrt(2)
     
-        hist_r,bin_edges=np.histogram(blobs[:,2]/scale,bins=np.linspace(0,50,26))
+        hist_r,bin_edges=np.histogram(blobs[:,2]/scale,20)
+        hist_r=hist_r[1:-1]
+        bin_edges=bin_edges[1:-1]
         rMAX=((bin_edges[np.argmax(hist_r)]+bin_edges[np.argmax(hist_r)+1])/2)
 
         if vis_diag:
