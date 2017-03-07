@@ -44,7 +44,7 @@ for i, image_file in enumerate(image_list_indir):
     print(str(i)+' : '+image_file)
 
 
-image_file=image_list_indir[2]
+image_file=image_list_indir[1]
 
 vis_diag=False
 
