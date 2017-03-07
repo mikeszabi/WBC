@@ -202,12 +202,12 @@ class diagnostics:
             savedir=os.path.dirname(self.image_file)
         head, tail = str.split(os.path.basename(self.image_file),'.')
         diag_image_file=os.path.join(savedir,head+'_diagnostics.csv')
-        out = open(os.path.join(diag_image_file), 'wt')
-        w = csv.DictWriter(out, delimiter=';', fieldnames=['measures','values'])
-        w.writeheader()
-        for key, value in self.measures.items():
-            w.writerow({'measures' : key, 'values' : value})
-        out.close()
+        with open(os.path.join(diag_image_file), 'wt',newline='') as f:
+            w = csv.DictWriter(f, delimiter=';', fieldnames=['measures','values'])
+            w.writeheader()
+            for key, value in self.measures.items():
+                w.writerow({'measures' : key, 'values' : value})
+            out.close()
         
     def saveDiagImage(self, im, diag_id, savedir=None):
         if savedir is None:

@@ -133,7 +133,7 @@ def cell_detector(image_file,save_diag=False,out_dir=''):
    
     mask_fg_clear=cell_morphology.rbc_mask_morphology(im,label_fg_bg_orig,diag.param,label_tsh=3,vis_diag=vis_diag,fig='31')    
     markers_rbc=cell_morphology.rbc_markers_from_mask(mask_fg_clear,diag.param)
-
+    segmentation.clear_border(markers_rbc,buffer_size=50,in_place=True)
 # TODO: connected component analysis - check if n_RBC can be deduced from component size
 
     """
@@ -168,7 +168,7 @@ def cell_detector(image_file,save_diag=False,out_dir=''):
     """
     if save_diag:
         im_wbc=imtools.overlayImage(im,label_wbc_orig>0,(0,1,0),1,vis_diag=vis_diag,fig='wbc')    
-        im_detect=imtools.overlayImage(im_wbc,morphology.binary_dilation(markers_rbc>0,morphology.disk(5)),\
+        im_detect=imtools.overlayImage(im_wbc,markers_rbc>0,\
                 (1,0,0),1,vis_diag=False,fig='detections')
         border=np.zeros(diag.image_shape).astype('uint8')
         border[0:50,:]=1

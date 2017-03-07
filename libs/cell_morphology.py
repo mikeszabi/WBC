@@ -9,8 +9,11 @@ from skimage import morphology
 from skimage import feature
 from skimage import measure
 from skimage import segmentation
+from scipy import ndimage
+from scipy import signal
 import numpy as np
 import matplotlib.pyplot as plt
+
 
 import imtools
 import segmentations
@@ -36,6 +39,92 @@ def rbc_labels(im,clust_centers_0,label_0,vis_diag=False):
           
     return label_fg_bg
 
+def blob_markers(im,label_mask,param,rbc=True,label_tsh=3,fill_tsh=0.75,scale=1,vis_diag=False,fig=''):
+    
+    mask_fg_open=label_mask>label_tsh
+
+    min_r=int(max(mask_fg_open.shape)/scale/100)
+    max_r=int(max(mask_fg_open.shape)/scale/30)
+    # TODO add these to parameters
+    r_list = np.linspace(min_r, max_r, (max_r-min_r)+1)
+         
+    image = (mask_fg_open).astype('float64')
+
+    im_filtered = [ndimage.convolve(image, morphology.disk(r*scale))/(morphology.disk(r*scale).sum()) for r in r_list]
+
+    fill_cube = np.dstack(im_filtered)
+    delta_cube = fill_cube[:,:,1:]-fill_cube[:,:,0:-1]
+
+    inc_cube=np.cumsum(delta_cube>=0, axis=2)
+
+    label_inc_stop=np.zeros(mask_fg_open.shape)
+    fill_at_max=np.zeros(mask_fg_open.shape)
+
+    for i in range(delta_cube.shape[2]):
+        label_inc_stop[inc_cube[:,:,i]==i]=i
+        fill_at_max[inc_cube[:,:,i]==i]=fill_cube[inc_cube[:,:,i]==i,i]          
+
+    label_inc_stop[fill_at_max<fill_tsh]=0
+
+    threshold=0
+    fp=int(max(mask_fg_open.shape)/50)
+    local_maxima_1 = feature.peak_local_max(label_inc_stop, threshold_abs=threshold,
+                                          indices=False,
+                                          footprint=np.ones((fp,fp)),
+                                          threshold_rel=0.0,
+                                          exclude_border=False)
+    
+    threshold=fill_tsh
+    local_maxima_2 = feature.peak_local_max(fill_cube, threshold_abs=threshold,
+                                          indices=False,
+                                          footprint=np.ones((3,3,1)),
+                                          threshold_rel=0.0,
+                                          exclude_border=False)
+    
+    
+    markers_1 = measure.label(local_maxima_1,return_num=False)
+    markers_2=measure.label(np.sum(local_maxima_2,axis=2),return_num=False)  
+    markers_2 = morphology.binary_opening(markers_2,morphology.disk(1))
+
+    markers=np.logical_and(markers_1>0,markers_2>0)
+    markers_3=markers.copy()
+    if rbc:
+    
+        # estimate RBC size
+        stops=label_inc_stop[markers>0].flatten()
+        
+        stop_hist, bin_edges=np.histogram(stops,20)
+        
+        # finding local maxima in histogram
+        i1=signal.argrelmax(stop_hist)
+        i2=np.argmax(stop_hist[i1])
+        i_max=i1[0][i2]
+        
+        rbc_ind=np.round(bin_edges[i_max+1]).astype('int64')
+           
+        rbcR=r_list[rbc_ind]
+        
+        # final markers
+        # TODO: remove from here
+        markers_3[np.logical_or(label_inc_stop<rbc_ind*0.5,label_inc_stop>rbc_ind*1.5)]=0
+        markers_3=morphology.binary_dilation(markers_3,morphology.disk(3))
+    else:
+        
+        markers_3[label_inc_stop<np.argmax(r_list>param.rbcR*0.75)]=0
+        rbcR=None
+        
+    if vis_diag:
+        if rbc:
+            fi=plt.figure(fig+'histogram of max radii')
+            ax=fi.add_subplot(111)
+            ax.plot(r_list[np.round(bin_edges[1:]).astype('int64')],stop_hist)
+            
+        blob=imtools.overlayImage(im,markers_2>0,(0,1,0),1,vis_diag=False,fig=fig+'rbc_mask')
+        blob=imtools.overlayImage(blob,markers_3,(1,0,0),1,vis_diag=False,fig=fig+'rbc_mask')
+        blob=imtools.overlayImage(blob,markers_1>0,(0,0,1),1,vis_diag=True,fig=fig+'blob_mask')
+      
+# TODO: create some more statistics
+    return markers_3, rbcR
 
 def rbc_mask_morphology(im,label_mask,param,label_tsh=3,scale=1,vis_diag=False,fig=''):
     
@@ -72,7 +161,7 @@ def rbc_mask_morphology(im,label_mask,param,label_tsh=3,scale=1,vis_diag=False,f
         
     return mask_fg_clear
    
-def rbc_markers_from_mask(mask_fg_clear,param):
+def rbc_markers_from_mask(mask_fg_clear,param,scale=1):
 
     # use dtf to find markers for watershed 
     skel, dtf = morphology.medial_axis(mask_fg_clear, return_distance=True)
@@ -80,11 +169,11 @@ def rbc_markers_from_mask(mask_fg_clear,param):
     # watershed seeds
     # TODO - add parameters to cfg
     local_maxi = feature.peak_local_max(dtf, indices=False, 
-                                        threshold_abs=0.5*param.rbcR,
-                                        footprint=np.ones((int(1.5*param.rbcR), int(1.5*param.rbcR))), 
+                                        threshold_abs=0.5*param.rbcR*scale,
+                                        footprint=np.ones((int(1.5*param.rbcR*scale), int(1.5*param.rbcR*scale))), 
                                         labels=mask_fg_clear.copy())
     markers, n_RBC = measure.label(local_maxi,return_num=True)
-    segmentation.clear_border(markers,buffer_size=50,in_place=True)
+    markers=morphology.binary_dilation(markers>0,morphology.disk(3))
     
     return markers
 

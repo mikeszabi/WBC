@@ -44,7 +44,7 @@ for i, image_file in enumerate(image_list_indir):
     print(str(i)+' : '+image_file)
 
 
-image_file=image_list_indir[1]
+image_file=image_list_indir[0]
 
 vis_diag=False
 
@@ -81,6 +81,36 @@ for image_file in image_list_indir:
                                                          vis_diag=vis_diag)   
     label_fg_bg=cell_morphology.rbc_labels(im,clust_centers_0,label_0)
 
+
+    """
+    RESIZE MASKS TO ORIGINAL
+    """
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")    
+        label_fg_bg_orig = img_as_ubyte(resize(label_fg_bg,diag.image_shape, order = 0))
+        #label_wbc_orig = img_as_ubyte(resize(label_wbc,diag.image_shape, order = 0))
+        #label_fg_bg_orig[label_wbc_orig>0]=0
+    
+    """
+    RBC detection
+    """
+   
+#    mask_fg_clear=cell_morphology.rbc_mask_morphology(im_resize,label_fg_bg,diag.param,scale=scale,label_tsh=30,vis_diag=vis_diag,fig='31')    
+#      
+#    markers_rbc=cell_morphology.rbc_markers_from_mask(mask_fg_clear,diag.param,scale=scale)
+#    segmentation.clear_border(markers_rbc,buffer_size=int(50*scale),in_place=True)
+
+
+    markers_rbc_2, rbcR=cell_morphology.rbc_markers_blob(im_resize,label_fg_bg,diag.param,rbc=True,label_tsh=30,scale=scale,fill_tsh=0.75,vis_diag=vis_diag,fig='31')
+    diag.param.rbcR=rbcR
+    segmentation.clear_border(markers_rbc_2,buffer_size=int(50*scale),in_place=True)
+
+    rbc_2=imtools.overlayImage(im_resize,markers_rbc_2>0,(1,0,0),1,vis_diag=True,fig='rbc_mask_2')   
+#    rbc_1=imtools.overlayImage(im_resize,markers_rbc>0,(1,0,0),1,vis_diag=vis_diag,fig='rbc_mask_1')   
+   
+    diag.saveDiagImage(rbc_2,'rbc_mask_2',savedir=diag_dir)
+#    diag.saveDiagImage(rbc_1,'rbc_mask_1',savedir=diag_dir)
+
     """
     WBC masks
     """
@@ -112,27 +142,9 @@ for image_file in image_list_indir:
         if clust_sat[i]>(clust_sat.max()+diag.sat_q90)/2:
             mask_wbc[label_1==i]=1
             mask_temp=label_1==i
-            mask_temp=morphology.binary_opening(mask_temp,morphology.disk(np.ceil(scale*diag.param.cell_bound_pct*diag.param.rbcR)))            
-            mask_temp=morphology.binary_closing(mask_temp,morphology.disk(np.ceil(0.75*scale*diag.param.rbcR)))            
+#            mask_temp=morphology.binary_opening(mask_temp,morphology.disk(np.ceil(scale*diag.param.cell_bound_pct*diag.param.rbcR)))            
+#            mask_temp=morphology.binary_closing(mask_temp,morphology.disk(np.ceil(0.75*scale*diag.param.rbcR)))            
             label_wbc[mask_temp]=1
-
-    """
-    RESIZE MASKS TO ORIGINAL
-    """
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")    
-        label_fg_bg_orig = img_as_ubyte(resize(label_fg_bg,diag.image_shape, order = 0))
-        label_wbc_orig = img_as_ubyte(resize(label_wbc,diag.image_shape, order = 0))
-        label_fg_bg_orig[label_wbc_orig>0]=0
-    
-    """
-    RBC detection
-    """
-   
-    mask_fg_clear=cell_morphology.rbc_mask_morphology(im,label_fg_bg_orig,diag.param,label_tsh=3,vis_diag=vis_diag,fig='31')    
-    
-    
-    markers_rbc=cell_morphology.rbc_markers_from_mask(mask_fg_clear,diag.param)
 
 # TODO use regionprops on mask size
     
@@ -140,9 +152,12 @@ for image_file in image_list_indir:
     #mask_wbc=morphology.binary_opening(mask_wbc,morphology.disk(int(scale*diag.param.cell_bound_pct*param.rbcR)))
     wbc_nuc_2=imtools.overlayImage(im_resize,mask_wbc>0,(1,1,0),0.5,vis_diag=False,fig='nuc_mask_2')   
     wbc_nuc_2=imtools.overlayImage(wbc_nuc_2,label_wbc>0,(0,1,0),1,vis_diag=vis_diag,fig='nuc_mask_2')
-   
-    diag.saveDiagImage(wbc_nuc_2,'nuc_mask_2',savedir=diag_dir)
-    
+#   
+#    diag.saveDiagImage(wbc_nuc_2,'nuc_mask_2',savedir=diag_dir)
+
+    markers_wbc_2, dm=cell_morphology.blob_markers(im_resize,label_wbc,diag.param,rbc=False,label_tsh=0,scale=scale,fill_tsh=0.75,vis_diag=vis_diag,fig='32')
+
+#    
 """
 # create segmentation for WBC detection based on hue and saturation
     sat_min=max(np.sort(clust_centers_0[:,0])[0],30)
