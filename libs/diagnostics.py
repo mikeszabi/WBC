@@ -34,9 +34,7 @@ class diagnostics:
         self.vis_diag=vis_diag
         self.image_file=image_file
         self.image_shape=(im.shape[0],im.shape[1])
-        
-        # TODO: add blob detection, estimate RBC size, statistics on blob localization
-        
+                
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             self.hsv = img_as_ubyte(color.rgb2hsv(im))
@@ -67,7 +65,7 @@ class diagnostics:
         self.sat_q10=np.argwhere(cumh>0.1)[0,0]
         #self.sat_peak=np.argmax(self.hsvhists[1])
         
-        ch_maxvar=np.argmax(self.siqr_rgb)
+        self.ch_maxvar=np.argmax(self.siqr_rgb)
 
 # TODO: allow adaptive setting
         self.h_min_wbc=255*self.param.wbc_range_in_hue[0]
@@ -77,18 +75,18 @@ class diagnostics:
         maxI=np.argwhere(self.cumh_hsv[l_dim]>0.95)[0,0]
         
          # Estimate RBC radius
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-# TODO: use rgb cahnnel with max siqr, adjust threshold based on siqr
-            self.gray, scale=imtools.imRescaleMaxDim(self.im_corrected[:,:,ch_maxvar], self.param.small_size, interpolation=0)
-        self.param.rbcR=self.blob_detection(255-self.gray,scale=scale,max_res=150,min_res=10,\
-                                            threshold=0.5*self.siqr_rgb[ch_maxvar]/255, vis_diag=vis_diag)   
+#        with warnings.catch_warnings():
+#            warnings.simplefilter("ignore")
+#            # TODO: use rgb cahnnel with max siqr, adjust threshold based on siqr
+#            self.gray, scale=imtools.imRescaleMaxDim(self.im_corrected[:,:,ch_maxvar], self.param.small_size, interpolation=0)
+#        self.param.rbcR=self.blob_detection(255-self.gray,scale=scale,max_res=150,min_res=10,\
+#                                            threshold=0.5*self.siqr_rgb[ch_maxvar]/255, vis_diag=vis_diag)   
         
         # fill up measures
                                                                           
         self.measures['siqr_rgb']=self.siqr_rgb
         self.measures['siqr_hsv']=self.siqr_hsv
-        self.measures['ch_maxvar']=ch_maxvar # channel with maximal variability
+        self.measures['ch_maxvar']=self.ch_maxvar # channel with maximal variability
         self.measures['maxI']=maxI.astype('float64')
         self.measures['minI']=minI.astype('float64')
         self.measures['contrast']=(self.measures['maxI']-self.measures['minI'])/(self.measures['maxI']+self.measures['minI'])

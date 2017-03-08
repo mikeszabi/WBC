@@ -63,7 +63,6 @@ def cell_detector(image_file,save_diag=False,out_dir=''):
     output_dir=diag.param.getOutDir(dir_name=os.path.join('output',out_dir))
     diag_dir=diag.param.getOutDir(dir_name=os.path.join('diag',out_dir))
 
-    diag.writeDiagnostics(diag_dir)   
             
 # SMOOTHING
 #im_smooth=imtools.smooth3ch(im,r=5)
@@ -178,8 +177,10 @@ def cell_detector(image_file,save_diag=False,out_dir=''):
         im_detect=imtools.overlayImage(im_detect,border>0,\
                 (1,1,0),0.2,vis_diag=vis_diag,fig='detections')       
         im_detect,scale=imtools.imRescaleMaxDim(im_detect,diag.param.middle_size,interpolation = 1)
+        
         diag.saveDiagImage(im_detect,'detections',savedir=diag_dir)
-    
+        diag.writeDiagnostics(diag_dir)   
+
 
     return shapelist
 
