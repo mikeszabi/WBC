@@ -157,6 +157,7 @@ for image_file in image_list_indir:
 #    diag.saveDiagImage(wbc_nuc_2,'nuc_mask_2',savedir=diag_dir)
 
     markers_wbc_2=cell_morphology.wbc_markers(label_wbc>0,diag.param,scale=scale,fill_tsh=0.33,vis_diag=vis_diag,fig='32')
+    segmentation.clear_border(markers_wbc_2,buffer_size=int(50*scale),in_place=True)
 
     wbc=imtools.overlayImage(rbc_2,markers_wbc_2>0,(0,1,0),1,vis_diag=vis_diag,fig='rbc_mask_2')   
 #    rbc_1=imtools.overlayImage(im_resize,markers_rbc>0,(1,0,0),1,vis_diag=vis_diag,fig='rbc_mask_1')   
