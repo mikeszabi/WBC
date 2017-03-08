@@ -42,8 +42,8 @@ def rbc_labels(im,clust_centers_0,label_0,vis_diag=False):
 
 def wbc_markers(mask_fg,param,fill_tsh=0.25,scale=1,vis_diag=False,fig=''):
 
-    mask_fg=morphology.binary_opening(mask_fg,morphology.disk(3))
-    mask_fg=morphology.binary_closing(mask_fg,morphology.disk(3))
+    mask_fg=morphology.binary_opening(mask_fg,morphology.disk(2))
+    mask_fg=morphology.binary_closing(mask_fg,morphology.disk(2))
 
     max_dim=max(mask_fg.shape)
     
@@ -61,8 +61,9 @@ def wbc_markers(mask_fg,param,fill_tsh=0.25,scale=1,vis_diag=False,fig=''):
     fill_cube = np.dstack(im_filtered)
     
     fp=int(max_dim/scale/50)   
-    threshold=0.25
-    local_maxima_fill = feature.peak_local_max(fill_cube, threshold_abs=threshold,
+    threshold=fill_tsh
+    local_maxima_fill = feature.peak_local_max(fill_cube, 
+                                          threshold_abs=threshold,
                                           indices=True,
                                           footprint=np.ones((fp,fp,3)),
                                           threshold_rel=0.0,
@@ -86,9 +87,9 @@ def wbc_markers(mask_fg,param,fill_tsh=0.25,scale=1,vis_diag=False,fig=''):
         
 def blob_markers(mask_fg,param,rbc=True,fill_tsh=0.75,scale=1,vis_diag=False,fig=''):
     
-    mask_fg=morphology.binary_closing(mask_fg,morphology.disk(2))
-    mask_fg=morphology.binary_opening(mask_fg,morphology.disk(2))    
-    
+#    mask_fg=morphology.binary_closing(mask_fg,morphology.disk(2))
+#    mask_fg=morphology.binary_opening(mask_fg,morphology.disk(2))    
+#    
     max_dim=max(mask_fg.shape)
     
     min_r=int(max_dim/scale/100)
@@ -117,7 +118,7 @@ def blob_markers(mask_fg,param,rbc=True,fill_tsh=0.75,scale=1,vis_diag=False,fig
     label_inc_stop[fill_at_max<fill_tsh]=0
 
     threshold=0
-    fp=int(max_dim/scale/100)
+    fp=int(max_dim/scale/150)
     local_maxima_inc = feature.peak_local_max(inc_cube, threshold_abs=threshold,
                                           indices=False,
                                           footprint=np.ones((fp,fp,3)),
@@ -125,7 +126,7 @@ def blob_markers(mask_fg,param,rbc=True,fill_tsh=0.75,scale=1,vis_diag=False,fig
                                           exclude_border=False)
     
     threshold=fill_tsh
-    fp=int(max_dim/scale/100)   
+    fp=int(max_dim/scale/150)   
     local_maxima_fill = feature.peak_local_max(fill_cube[:,:,1:], threshold_abs=threshold,
                                           indices=False,
                                           footprint=np.ones((fp,fp,3)),
@@ -143,7 +144,7 @@ def blob_markers(mask_fg,param,rbc=True,fill_tsh=0.75,scale=1,vis_diag=False,fig
         # estimate RBC size
         stops=label_inc_stop[markers_r>0].flatten()
         
-        stop_hist, bin_edges=np.histogram(stops,20)
+        stop_hist, bin_edges=np.histogram(stops,int(len(r_list)/2))
         
         # finding local maxima in histogram
         i1=signal.argrelmax(stop_hist)
@@ -164,9 +165,11 @@ def blob_markers(mask_fg,param,rbc=True,fill_tsh=0.75,scale=1,vis_diag=False,fig
         rbcR=None
         # TODO create marker list with corresponding radius
     markers=markers_r>0  
-    markers=morphology.binary_dilation(markers_r,morphology.disk(3)).astype('uint8')
+    markers=morphology.binary_dilation(markers_r,morphology.disk(int(rbcR*scale/3))).astype('uint8')
+    markers=morphology.binary_opening(markers,morphology.disk(1)).astype('uint8')
+
     markers[markers_r>0]=markers_r[markers_r>0]
-    
+
     if vis_diag:
         if rbc:
             fi=plt.figure(fig+'histogram of max radii')
