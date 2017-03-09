@@ -67,7 +67,8 @@ for image_file in image_list_indir:
 
     
 def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
-    
+    #save_diag=True
+    #out_dir=imDirs[i_imDirs]
     plt.ioff()
     # xml is at image file location
     image_list_indir=[]
@@ -164,8 +165,8 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
         with open(os.path.join(output_dir,'eval_stats.txt'), 'w') as eval_file:
             eval_file.write('images in dir:         {0}\n'.format(n_images))
             eval_file.write('images with manual and automatic annotations: {0}\n'.format(len(detect_stat)))
-            eval_file.write('n wbc total:           {0.0}\n'.format(sum(n_wbc)))
-            eval_file.write('n wbc detected total:  {0.0}\n'.format(sum(n_wbc_detected)))
-            eval_file.write('n wbc matched total:   {0.0}\n'.format(sum(n_wbc_matched)))
+            eval_file.write('n wbc total:           {0}\n'.format(sum(n_wbc)))
+            eval_file.write('n wbc detected total:  {0}\n'.format(sum(n_wbc_detected)))
+            eval_file.write('n wbc matched total:   {0}\n'.format(sum(n_wbc_matched)))
     
     

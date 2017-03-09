@@ -34,7 +34,7 @@ import annotations
 
 %matplotlib qt5
 
-image_dir=r'e:\WBC\data\Test\WBC Types\Problem'
+image_dir=r'd:\Projects\WBC\data\Test\WBC Types\Problem'
 included_extenstions = ['*.jpg', '*.bmp', '*.png', '*.gif']
 image_list_indir = []
 for ext in included_extenstions:
@@ -56,8 +56,8 @@ for image_file in image_list_indir:
    
     diag=diagnostics.diagnostics(im,image_file,vis_diag=vis_diag)
     
-    output_dir=diag.param.getOutDir(dir_name=os.path.join('output',out_dir))
-    diag_dir=diag.param.getOutDir(dir_name=os.path.join('diag',out_dir))
+    output_dir=diag.param.getOutDir(dir_name=os.path.join('output'))
+    diag_dir=diag.param.getOutDir(dir_name=os.path.join('diag'))
 
             
 # SMOOTHING
