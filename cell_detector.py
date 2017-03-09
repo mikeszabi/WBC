@@ -16,6 +16,7 @@ from skimage.transform import resize
 from skimage import morphology
 from skimage import measure
 from skimage import img_as_ubyte
+from skimage import segmentation
 
 # %matplotlib qt5
  
@@ -88,13 +89,13 @@ def cell_detector(image_file,save_diag=False,out_dir=''):
     WBC nucleus masks
     """
 # create segmentation for WBC detection based on hue and saturation
-    mask_sat=hsv_resize[:,:,1]>diag.sat_q90
+    mask_sat=hsv_resize[:,:,1]>diag.sat_q95
            
     clust_centers_1, label_1 = segmentations.segment_hsv(hsv_resize, mask=mask_sat,\
                                                     cut_channel=1, chs=(0,0,0),\
                                                     n_clusters=3,\
                                                     vis_diag=vis_diag) 
-# find cluster with highest saturation
+    # find cluster with highest saturation
 
     clust_hue=clust_centers_1[:,0]
     
@@ -106,53 +107,60 @@ def cell_detector(image_file,save_diag=False,out_dir=''):
         cumh_hsv, siqr_hsv = diag.semi_IQR(hist_hsv) # Semi-Interquartile Range
         clust_sat[i]=np.argwhere(cumh_hsv[1]>0.99)[0,0]
     for i in range(clust_hue.shape[0]):
-        if clust_sat[i]==clust_sat.max():
-            mask_temp=label_1==i
-            mask_temp=label_1==i
-            mask_temp=morphology.binary_opening(mask_temp,morphology.disk(np.ceil(scale*diag.param.cell_bound_pct*diag.param.rbcR)))            
-            mask_temp=morphology.binary_closing(mask_temp,morphology.disk(np.ceil(0.75*scale*diag.param.rbcR)))            
+        if clust_sat[i]==clust_sat.max():       
 # TODO: use component size - region props instead
-            label_wbc[mask_temp]=1
+            label_wbc[label_1==i]=1
 #        if clust_hue[i]>diag.param.wbc_range_in_hue[0]*255 and\
 #            clust_hue[i]<diag.param.wbc_range_in_hue[1]*255:
 #            mask_nuc_2[label_1==i]=1    
 # TODO: add clust_hue to diagnostics
-    """
-    RESIZE MASKS TO ORIGINAL
-    """
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")    
-        label_fg_bg_orig = img_as_ubyte(resize(label_fg_bg,diag.image_shape, order = 0))
-        label_wbc_orig = img_as_ubyte(resize(label_wbc,diag.image_shape, order = 0))
-        label_fg_bg_orig[label_wbc_orig>0]=0
-    
+
     """
     RBC detection
     """
    
-    mask_fg_clear=cell_morphology.rbc_mask_morphology(im,label_fg_bg_orig,diag.param,label_tsh=3,vis_diag=vis_diag,fig='31')    
-    markers_rbc=cell_morphology.rbc_markers_from_mask(mask_fg_clear,diag.param)
-    segmentation.clear_border(markers_rbc,buffer_size=50,in_place=True)
+    markers_rbc, rbcR=cell_morphology.blob_markers(label_fg_bg>30,diag.param,scale=scale,fill_tsh=0.85,vis_diag=vis_diag,fig='31')
+    segmentation.clear_border(markers_rbc,buffer_size=diag.param.middle_border,in_place=True)
+
+    diag.param.rbcR=rbcR
+    diag.measures['rbcR']=rbcR
 # TODO: connected component analysis - check if n_RBC can be deduced from component size
+# TODO: detailed analysis of RBC counts and sizes
 
     """
+    WBC nucleus detection
+    """
+    
+    markers_wbc_nuc=cell_morphology.wbc_markers(label_wbc>0,diag.param,scale=scale,fill_tsh=0.33,vis_diag=vis_diag,fig='wbc_nuc')
+    segmentation.clear_border(markers_wbc_nuc,buffer_size=diag.param.middle_border,in_place=True)
+  
+    """
+    CHECK ERRORS
+    """
+    diag.checks()
+    if len(diag.error_list)>0:
+        print(image_file+' is of wrong quality')
+        return []
+    
+    """
+    CREATE shapes
     """
     cnts_RBC = measure.find_contours(markers_rbc>0, 0.5)
-    cnts_WBC = measure.find_contours(label_wbc_orig>0, 0.5)
+    cnts_WBC = measure.find_contours(markers_wbc_nuc>0, 0.5)
     
     shapelist=[]
     for c in cnts_RBC:
          c=np.reshape(np.average(c,axis=0),(1,2))
          pts=[]
          for yx in c:
-             pts.append((yx[1],yx[0]))
+             pts.append((yx[1]/scale,yx[0]/scale))
          one_shape=('RBC','point',pts,'None','None')
          shapelist.append(one_shape)
     for c in cnts_WBC:
          c=np.reshape(np.average(c,axis=0),(1,2))
          pts=[]
          for yx in c:
-             pts.append((yx[1],yx[0]))
+             pts.append((yx[1]/scale,yx[0]/scale))
          one_shape=('WBC','polygon',pts,'None','None')
          shapelist.append(one_shape)
     
@@ -166,14 +174,13 @@ def cell_detector(image_file,save_diag=False,out_dir=''):
     CREATE and SAVE DIAGNOSTICS IMAGES
     """
     if save_diag:
-        im_wbc=imtools.overlayImage(im,label_wbc_orig>0,(0,1,0),1,vis_diag=vis_diag,fig='wbc')    
-        im_detect=imtools.overlayImage(im_wbc,markers_rbc>0,\
-                (1,0,0),1,vis_diag=False,fig='detections')
-        border=np.zeros(diag.image_shape).astype('uint8')
-        border[0:50,:]=1
-        border[-51:-1,:]=1     
-        border[:,0:50]=1
-        border[:,-51:-1]=1    
+        im_wbc=imtools.overlayImage(im_resize,markers_wbc_nuc,(0,1,0),1,vis_diag=vis_diag,fig='wbc')    
+        im_detect=imtools.overlayImage(im_wbc,markers_rbc>0,(1,0,0),1,vis_diag=False,fig='detections')
+        border=np.zeros(im_resize.shape[0:2]).astype('uint8')
+        border[0:diag.param.middle_border,:]=1
+        border[-diag.param.middle_border-1:-1,:]=1     
+        border[:,0:diag.param.middle_border]=1
+        border[:,-diag.param.middle_border-1:-1]=1    
         im_detect=imtools.overlayImage(im_detect,border>0,\
                 (1,1,0),0.2,vis_diag=vis_diag,fig='detections')       
         im_detect,scale=imtools.imRescaleMaxDim(im_detect,diag.param.middle_size,interpolation = 1)

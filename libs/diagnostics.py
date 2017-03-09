@@ -46,11 +46,12 @@ class diagnostics:
         self.mask_over=self.overMask(intensity_im)            
         # Estimate inhomogen illumination
         self.cent_init, \
+        self.bckg_pct, \
         bckg_inhomogenity_pct, \
         self.hsv_corrected, \
         self.im_corrected=self.illumination_correction()
         
-        if self.mask_over.sum()>0:
+        if self.mask_over.sum()>0 and vis_diag:
             imtools.maskOverlay(im,self.mask_over,0.5,vis_diag=self.vis_diag,fig='overexposition mask')
         
         self.measures={}
@@ -61,8 +62,8 @@ class diagnostics:
         self.cumh_hsv, self.siqr_hsv = self.semi_IQR(self.hsvhists) # Semi-Interquartile Range
 
         cumh=self.cumh_hsv[1] # saturation
-        self.sat_q90=np.argwhere(cumh>0.9)[0,0]
-        self.sat_q10=np.argwhere(cumh>0.1)[0,0]
+        self.sat_q95=np.argwhere(cumh>0.95)[0,0]
+        self.sat_q05=np.argwhere(cumh>0.05)[0,0]
         #self.sat_peak=np.argmax(self.hsvhists[1])
         
         self.ch_maxvar=np.argmax(self.siqr_rgb)
@@ -93,31 +94,34 @@ class diagnostics:
         self.measures['overexpo_pct']=(self.mask_over>0).sum()/self.mask_over.size
         self.measures['global_entropy']=np.NaN # global homogenity
         self.measures['global_var']=np.NaN # global variance
-        self.measures['saturation_q90']=self.sat_q90
-        self.measures['saturation_q10']=self.sat_q10
+        self.measures['saturation_q95']=self.sat_q95
+        self.measures['saturation_q05']=self.sat_q05
         self.measures['bckg_inhomogenity_pct']=bckg_inhomogenity_pct
-        self.measures['RBC radius']=self.param.rbcR
+        self.measures['bckg_pct']=self.bckg_pct
         
         self.error_list=[]
-        self.checks()
+        #self.checks()
 
     def checks(self):
         self.error_list=[]
-        if np.logical_not(self.measures['ch_maxvar']==1):
-            self.error_list.append('ch_maxvar')
+#        if np.logical_not(self.measures['ch_maxvar']==1):
+#            self.error_list.append('ch_maxvar')
         if self.measures['contrast']<0.25:
             self.error_list.append('contrast')
         if self.measures['overexpo_pct']>0.1:
             self.error_list.append('overexpo_pct')
-        if self.measures['saturation_q90']<80:
-            self.error_list.append('saturation_q90')
-        if self.measures['saturation_q10']>30:
-            self.error_list.append('saturation_q10')
-        if self.measures['RBC radius']<15 or self.measures['RBC radius']>50:
-            self.error_list.append('RBC radius')
-        print('Error list:')
-        for errors in self.error_list:
-            print(errors+' :'+str(self.measures[errors]))
+        if self.measures['saturation_q95']<80:
+            self.error_list.append('saturation_q95')
+        if self.measures['saturation_q05']>30:
+            self.error_list.append('saturation_q05')
+        if self.measures['bckg_pct']>0.75:
+            self.error_list.append('bckg_pct')
+#        if self.measures['RBC radius']<15 or self.measures['RBC radius']>50:
+#            self.error_list.append('RBC radius')
+        if (len(self.error_list)>0):
+            print('Error list:')
+            for errors in self.error_list:
+                print(errors+' :'+str(self.measures[errors]))
 
     def semi_IQR(self,hists):
         siqr=[]
@@ -144,7 +148,9 @@ class diagnostics:
         cent_init, label_mask = segmentations.segment_hsv(self.hsv_small, chs=(1,1,2),  n_clusters=4, vis_diag=self.vis_diag)
         ind_val=np.argsort(cent_init[:,2]) # sure background - highest intensity
         # TODO: check ind_val[-2]
-        mask_bg_sure=morphology.binary_erosion(label_mask == ind_val[-1],morphology.disk(2));
+        mask_bg_sure=label_mask == ind_val[-1]
+        bckg_pct=(mask_bg_sure>0).sum()/mask_bg_sure.size
+        mask_bg_sure=morphology.binary_erosion(mask_bg_sure,morphology.disk(2));
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             mask_bg_sure= img_as_ubyte(resize(mask_bg_sure,self.image_shape,order=0))
@@ -160,7 +166,7 @@ class diagnostics:
             ax1.imshow(im_corrected)
             ax2=f.add_subplot(122)
             ax2.imshow(hsv_corrected)
-        return cent_init, bckg_inhomogenity_pct, hsv_corrected, im_corrected
+        return cent_init, bckg_pct, bckg_inhomogenity_pct, hsv_corrected, im_corrected
     
     def blob_detection(self,gray,scale=1,threshold=0.1, max_res=100,min_res=10,vis_diag=False):
         
@@ -205,7 +211,6 @@ class diagnostics:
             w.writeheader()
             for key, value in self.measures.items():
                 w.writerow({'measures' : key, 'values' : value})
-            out.close()
         
     def saveDiagImage(self, im, diag_id, savedir=None):
         if savedir is None:

@@ -8,6 +8,7 @@ import __init__
 import os
 import skimage.io as io
 import glob
+import sys
 import cfg
 from matplotlib.path import Path
 import numpy as np
@@ -25,7 +26,7 @@ import cell_detector
 param=cfg.param()
 vis_diag=False
 
-# data_dir=r'd:\DATA\DiagonAdatbazis_20170221-5'
+# data_dir=r'd:\DATA\Diagon_Test'
 
 data_dir=None # access test data set
 
@@ -33,10 +34,10 @@ imDirs=os.listdir(param.getImageDirs(data_dir=data_dir))
 print(imDirs)
 
 # SELECT subdir
-i_imDirs=-1
+i_imDirs=3
 
-output_dir=param.getOutDir('output')
-diag_dir=param.getOutDir('diag')
+output_dir=param.getOutDir(dir_name='output')
+diag_dir=param.getOutDir(dir_name='diag')
 
 image_dir=param.getImageDirs(data_dir=data_dir,dir_name=imDirs[i_imDirs])
 
@@ -49,7 +50,7 @@ for i, image_file in enumerate(image_list_indir):
     print(str(i)+' : '+image_file)
 
 # SELECT a TEST file
-image_file=image_list_indir[10]
+image_file=image_list_indir[15]
 
 detect_stat=[]
 
@@ -153,11 +154,18 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
         n_wbc.append(stats[1])
         n_wbc_detected.append(stats[2])
         n_wbc_matched.append(stats[3])
-        
+    
     print('images in dir:'+str(n_images))
-    print('images with annotation:'+str(len(detect_stat)))
+    print('images with manual and automatic annotations:'+str(len(detect_stat)))
     print('n wbc total:'+str(sum(n_wbc)))
     print('n wbc detected total:'+str(sum(n_wbc_detected)))
     print('n wbc matched total:'+str(sum(n_wbc_matched)))
+    if save_diag:
+        with open(os.path.join(output_dir,'eval_stats.txt'), 'w') as eval_file:
+            eval_file.write('images in dir:         {0}\n'.format(n_images))
+            eval_file.write('images with manual and automatic annotations: {0}\n'.format(len(detect_stat)))
+            eval_file.write('n wbc total:           {0.0}\n'.format(sum(n_wbc)))
+            eval_file.write('n wbc detected total:  {0.0}\n'.format(sum(n_wbc_detected)))
+            eval_file.write('n wbc matched total:   {0.0}\n'.format(sum(n_wbc_matched)))
     
     
