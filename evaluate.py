@@ -6,7 +6,6 @@ This is a temporary script file.
 """
 
 import __init__
-import glob
 import os
 import skimage.io as io
 import sys
@@ -31,11 +30,9 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
                'lgly':'Large granular lymphocytes',\
                'rly':'Reactive lymphocytes'}
 
-    included_extenstions = ['*.jpg', '*.bmp', '*.png', '*.gif']
 
-    image_list_indir = []
-    for ext in included_extenstions:
-        image_list_indir.extend(glob.glob(os.path.join(image_dir, ext)))
+    image_list_indir=imtools.imagelist_in_depth(image_dir,level=1)
+    print('processing '+str(len(image_list_indir))+' images')
 
     detect_stat=[]
     for i, image_file in enumerate(image_list_indir):

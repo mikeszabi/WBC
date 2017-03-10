@@ -69,14 +69,11 @@ for image_file in image_list_indir:
 def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
     #save_diag=True
     #out_dir=imDirs[i_imDirs]
-    image_dir=r'd:\DATA\Diagon_Test\1219_kezi_diapH_5_7_12'
+    image_dir=r'd:\DATA\Diagon_Test'
     plt.ioff()
     # xml is at image file location
-    image_list_indir=[]
-    included_extenstions = ['*.jpg', '*.bmp', '*.png', '*.gif']
-    image_list_indir = []
-    for ext in included_extenstions:
-        image_list_indir.extend(glob.glob(os.path.join(image_dir, ext)))
+    image_list_indir=imtools.imagelist_in_depth(image_dir,level=1)
+    print('processing '+str(len(image_list_indir))+' images')
 
     detect_stat=[]
     for i, image_file in enumerate(image_list_indir):

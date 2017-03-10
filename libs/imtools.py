@@ -6,6 +6,8 @@ Created on Wed Jan 11 11:57:09 2017
 """
 
 import warnings
+import os
+import glob
 import numpy as np
 from matplotlib import pyplot as plt
 from skimage.transform import rescale
@@ -165,3 +167,22 @@ def histogram_similarity(hist, reference_hist):
     similarity = 1 / (chi_sqr + 1.0e-4)
 
     return similarity
+
+def walklevel(root_dir, level=1):
+    root_dir = root_dir.rstrip(os.path.sep)
+    assert os.path.isdir(root_dir)
+    num_sep = root_dir.count(os.path.sep)
+    for root, dirs, files in os.walk(root_dir):
+        yield root, dirs, files
+        num_sep_this = root.count(os.path.sep)
+        if num_sep + level <= num_sep_this:
+            del dirs[:]
+            
+def imagelist_in_depth(image_dir,level=1):
+    image_list_indir=[]
+    included_extenstions = ['*.jpg', '*.bmp', '*.png', '*.gif']
+    image_list_indir = []
+    for root, dirs, files in walklevel(image_dir, level=level):
+        for ext in included_extenstions:
+            image_list_indir.extend(glob.glob(os.path.join(root, ext)))
+    return image_list_indir

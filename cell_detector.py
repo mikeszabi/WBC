@@ -6,16 +6,11 @@ Created on Tue Feb 14 09:21:59 2017
 """
 import os
 import sys
-import glob
-import warnings
 import argparse
 
 import numpy as np;
 import skimage.io as io
-from skimage.transform import resize
-from skimage import morphology
 from skimage import measure
-from skimage import img_as_ubyte
 from skimage import segmentation
 
 # %matplotlib qt5
@@ -34,10 +29,8 @@ def batch_cell_detector(image_dir,save_diag=False,out_dir=''):
         print('directory does not exists')
         return
     
-    included_extenstions = ['*.jpg', '*.bmp', '*.png', '*.gif']
-    image_list_indir = []
-    for ext in included_extenstions:
-        image_list_indir.extend(glob.glob(os.path.join(image_dir, ext)))
+    image_list_indir=imtools.imagelist_in_depth(image_dir,level=1)
+    print('processing '+str(len(image_list_indir))+' images')
         
     for image_file in image_list_indir:    
         print(image_file)
