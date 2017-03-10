@@ -22,26 +22,53 @@ import segmentations
 def rbc_labels(im,clust_centers_0,label_0,vis_diag=False):
     # creating meaningful labels for foreground-background segmentation and RBC detection
     cent_dist=segmentations.center_diff_matrix(clust_centers_0,metric='euclidean')
-    
+    n_clust=clust_centers_0.shape[0]
     # adding meaningful labels
     ind_sat=np.argsort(clust_centers_0[:,0])
     ind_val=np.argsort(clust_centers_0[:,2])
     
+    ind_sure_bg=[]
+    ind_sure_fg=[]
+
     label_fg_bg=np.zeros(label_0.shape).astype('uint8')
-    label_fg_bg[label_0==ind_val[-2]]=2 # unsure region
-    label_fg_bg[label_0==ind_sat[-3]]=2 # unsure region
-    label_fg_bg[label_0==ind_val[-1]]=1 # sure background
-    label_fg_bg[label_0==ind_sat[-1]]=2 # unsure region
-    if cent_dist[ind_sat[-1],ind_sat[-2]]<cent_dist[ind_sat[-2],ind_val[-1]]:
-        label_fg_bg[label_0==ind_sat[-1]]=31 # cell foreground guess 1 
-        label_fg_bg[label_0==ind_sat[-2]]=32 # cell foreground guess 2
-        if cent_dist[ind_sat[-2],ind_sat[-3]]<cent_dist[ind_sat[-3],ind_val[-1]]:                 
-           label_fg_bg[label_0==ind_sat[-3]]=33 # cell foreground guess 3
-    else:
-        label_fg_bg[label_0==ind_sat[-1]]=21
-        label_fg_bg[label_0==ind_sat[-2]]=32 # cell foreground guess
-        if cent_dist[ind_sat[-2],ind_sat[-3]]<cent_dist[ind_sat[-3],ind_val[-1]]:
-            label_fg_bg[label_0==ind_sat[-3]]=33 # cell foreground guess 
+            
+    ind_sure_bg.append(ind_val[-1])
+
+    ind_sure_fg.append(ind_sat[-1])
+    
+    con=[]
+    occ=np.zeros((n_clust,1))
+    for i, row in enumerate(cent_dist):
+        for j, col in enumerate(row[i+1:]):
+            if col==min(row[row>0]):
+                con.append([i,j+i+1])
+                occ[i]+=1
+                occ[j+i+1]+=1
+
+    # check backgrounds
+    for c1,c2 in con:
+        if ind_val[-1]==c1 and occ[c2]==1:
+            ind_sure_bg.append(c2)
+        if ind_val[-1]==c2 and occ[c1]==1:
+            ind_sure_bg.append(c1)
+            
+    # check foregrounds
+    for c1,c2 in con:
+        if ind_sat[-1]==c1 and occ[c2]==1:
+            ind_sure_fg.append(c2)
+        if ind_sat[-1]==c2 and occ[c1]==1:
+            ind_sure_fg.append(c1)
+    
+    # ATTACH LABELS
+    for i in range(n_clust):
+        if (i in ind_sure_bg):
+            label_fg_bg[label_0==i]=1
+        else:
+            label_fg_bg[label_0==i]=3
+    
+    # FOREGROUND - distinct (wbc nucleoid, cell membrane)
+    if len(ind_sure_fg)==1:
+        label_fg_bg[label_0==ind_sure_fg[0]]=2
         
     return label_fg_bg
 
