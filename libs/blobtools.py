@@ -17,8 +17,14 @@ from numpy import arccos
 # http://www.cs.utah.edu/~jfishbau/advimproc/project1/ (04.04.2013)
 # Theory behind: http://en.wikipedia.org/wiki/Blob_detection (04.04.2013)
 
+#def ismember(blob1, blob2):
+#    bind = {}
+#    for i, elt in enumerate(blob2):
+#        if elt not in bind:
+#            bind[elt] = i
+#    return [bind.get(itm, None) for itm in blob1]  # None can be replaced by any other "not in b" value
 
-def _blob_overlap(blob1, blob2):
+def blob_overlap(blob1, blob2):
     """Finds the overlapping area fraction between two blobs.
     Returns a float representing fraction of overlapped area.
     Parameters
@@ -68,7 +74,7 @@ def _blob_overlap(blob1, blob2):
     return area / (math.pi * (min(r1, r2) ** 2))
 
 
-def _prune_blobs(blobs_array, overlap):
+def prune_blobs(blobs_array, overlap):
     """Eliminated blobs with area overlap.
     Parameters
     ----------

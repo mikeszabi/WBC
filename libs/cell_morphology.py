@@ -8,7 +8,6 @@ Created on Mon Feb 13 10:48:17 2017
 from skimage import morphology
 from skimage import feature
 from skimage import measure
-from skimage import segmentation
 from skimage import color
 from scipy import ndimage
 from scipy import signal
@@ -40,9 +39,9 @@ def rbc_labels(im,clust_centers_0,label_0,vis_diag=False):
            label_fg_bg[label_0==ind_sat[-3]]=33 # cell foreground guess 3
     else:
         label_fg_bg[label_0==ind_sat[-1]]=21
+        label_fg_bg[label_0==ind_sat[-2]]=32 # cell foreground guess
         if cent_dist[ind_sat[-2],ind_sat[-3]]<cent_dist[ind_sat[-3],ind_val[-1]]:
             label_fg_bg[label_0==ind_sat[-3]]=33 # cell foreground guess 
-            label_fg_bg[label_0==ind_sat[-2]]=32 # cell foreground guess 
         
     return label_fg_bg
 
@@ -93,19 +92,21 @@ def wbc_markers(mask_fg,param,fill_tsh=0.25,scale=1,vis_diag=False,fig=''):
     return markers
         
 def blob_markers(mask_fg,param,fill_tsh=0.75,scale=1,vis_diag=False,fig=''):
-    
+ 
+#    mask_fg=label_fg_bg>30
 #    mask_fg=morphology.binary_closing(mask_fg,morphology.disk(1))
-
 #    mask_fg=morphology.binary_opening(mask_fg,morphology.disk(1))    
 #    
+    
+#    label_cc = measure.label(morphology.binary_erosion(mask_fg,morphology.disk(1)))
     max_dim=max(mask_fg.shape)
     
     min_r=int(max_dim/scale/100)
     max_r=int(max_dim/scale/30)
     
-    mask_fg=morphology.remove_small_holes(mask_fg>0, 
-                                          min_size=scale*min_r*min_r*np.pi, 
-                                          connectivity=2)
+#    mask_fg=morphology.remove_small_holes(mask_fg>0, 
+#                                          min_size=scale*min_r*min_r*np.pi, 
+#                                          connectivity=2)
     
     # TODO add these to parameters
     r_list = np.linspace(min_r, max_r, (max_r-min_r)+1)
@@ -195,7 +196,8 @@ def blob_markers(mask_fg,param,fill_tsh=0.75,scale=1,vis_diag=False,fig=''):
 def rbc_mask_morphology(im,label_mask,param,label_tsh=3,scale=1,vis_diag=False,fig=''):
     
     mask_fg=label_mask>label_tsh
-    mask_fg_open=morphology.binary_opening(mask_fg,morphology.star(2))
+    mask_fg_open=mask_fg
+#    mask_fg_open=morphology.binary_opening(mask_fg,morphology.star(2))
 #   
 #    mask_fg=label_mask==32
 #    mask_fg_open_2=morphology.binary_closing(mask_fg,morphology.disk(1)).astype('uint8')
@@ -235,11 +237,11 @@ def rbc_markers_from_mask(mask_fg_clear,param,scale=1):
     # watershed seeds
     # TODO - add parameters to cfg
     local_maxi = feature.peak_local_max(dtf, indices=False, 
-                                        threshold_abs=0.5*param.rbcR*scale,
+                                        threshold_abs=0.25*param.rbcR*scale,
                                         footprint=np.ones((int(1.5*param.rbcR*scale), int(1.5*param.rbcR*scale))), 
                                         labels=mask_fg_clear.copy())
-    markers, n_RBC = measure.label(local_maxi,return_num=True)
-    markers=morphology.binary_dilation(markers>0,morphology.disk(3))
+    #markers, n_RBC = measure.label(local_maxi,return_num=True)
+    markers=morphology.binary_dilation(local_maxi>0,morphology.disk(3))
     
     return markers
 

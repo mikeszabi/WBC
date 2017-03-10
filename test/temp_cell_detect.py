@@ -34,7 +34,9 @@ import annotations
 
 %matplotlib qt5
 
+image_dir=r'd:\DATA\Diagon_Test\1219_kezi_diapH_5_7_12'
 image_dir=r'd:\Projects\WBC\data\Test\WBC Types\Problem'
+
 included_extenstions = ['*.jpg', '*.bmp', '*.png', '*.gif']
 image_list_indir = []
 for ext in included_extenstions:
@@ -44,9 +46,9 @@ for i, image_file in enumerate(image_list_indir):
     print(str(i)+' : '+image_file)
 
 
-image_file=image_list_indir[10]
+image_file=image_list_indir[4]
 
-vis_diag=True
+vis_diag=False
 
 for image_file in image_list_indir:
 
@@ -84,42 +86,53 @@ for image_file in image_list_indir:
     WBC nucleus masks
     """
 # create segmentation for WBC detection based on hue and saturation
-    mask_sat=hsv_resize[:,:,1]>diag.sat_q95
-           
-    clust_centers_1, label_1 = segmentations.segment_hsv(hsv_resize, mask=mask_sat,\
-                                                    cut_channel=1, chs=(0,0,0),\
-                                                    n_clusters=3,\
-                                                    vis_diag=vis_diag) 
-    # TODO: remove artifact
-    # find cluster with highest saturation
-
-    clust_hue=clust_centers_1[:,0]
+    mask_sat=np.logical_and(np.logical_and(hsv_resize[:,:,0]>160,hsv_resize[:,:,0]<190),\
+                                           hsv_resize[:,:,1]>diag.sat_q95)
     
-    clust_sat=np.zeros(len(clust_hue))    
-    label_wbc=np.zeros(label_1.shape)
-    
-    for i in range(clust_hue.shape[0]):
-        hist_hsv=imtools.colorHist(hsv_resize,mask=label_1==i)
-        cumh_hsv, siqr_hsv = diag.semi_IQR(hist_hsv) # Semi-Interquartile Range
-        clust_sat[i]=np.argwhere(cumh_hsv[1]>0.95)[0,0]
-    for i in range(clust_hue.shape[0]):
-        if clust_sat[i]==clust_sat.max():       
-# TODO: use component size - region props instead
-            label_wbc[label_1==i]=1
-#        if clust_hue[i]>diag.param.wbc_range_in_hue[0]*255 and\
-#            clust_hue[i]<diag.param.wbc_range_in_hue[1]*255:
-#            mask_nuc_2[label_1==i]=1    
-# TODO: add clust_hue to diagnostics
+# TODO: learn wbc range from mask_sat hue distribution
+#    im_wbc=imtools.overlayImage(im_resize,mask_sat>0,(0,1,1),0.5,vis_diag=vis_diag,fig='sat')    
+#     
+#    clust_centers_1, label_1 = segmentations.segment_hsv(hsv_resize, mask=mask_sat,\
+#                                                    cut_channel=1, chs=(0,0,0),\
+#                                                    n_clusters=2,\
+#                                                    vis_diag=vis_diag) 
+#    # TODO: remove artifact
+#    # find cluster with highest saturation
+#
+#    clust_hue=clust_centers_1[:,0]
+#    
+#    clust_sat=np.zeros(len(clust_hue))    
+#    label_wbc=np.zeros(label_1.shape)
+#    
+#    for i in range(clust_hue.shape[0]):
+#        hist_hsv=imtools.colorHist(hsv_resize,mask=label_1==i)
+#        cumh_hsv, siqr_hsv = diag.semi_IQR(hist_hsv) # Semi-Interquartile Range
+#        clust_sat[i]=np.argwhere(cumh_hsv[1]>0.95)[0,0]
+#    for i in range(clust_hue.shape[0]):
+#        if clust_sat[i]>clust_sat.max()*0.8:       
+## TODO: use component size - region props instead
+#            label_wbc[label_1==i]=1
+##        if clust_hue[i]>diag.param.wbc_range_in_hue[0]*255 and\
+##            clust_hue[i]<diag.param.wbc_range_in_hue[1]*255:
+##            mask_nuc_2[label_1==i]=1    
+## TODO: add clust_hue to diagnostics
+    label_wbc=mask_sat
+    im_wbc=imtools.overlayImage(im_resize,label_wbc>0,(0,1,1),0.5,vis_diag=vis_diag,fig='sat')    
 
     """
     RBC detection
     """
+    label_fg_bg[label_wbc>0]=20
+    mask_fg_clear=cell_morphology.rbc_mask_morphology(im_resize,label_fg_bg,diag.param,scale=scale,label_tsh=30,vis_diag=vis_diag,fig='31')    
+#      
+    markers_rbc=cell_morphology.rbc_markers_from_mask(mask_fg_clear,diag.param,scale=scale)
+    segmentation.clear_border(markers_rbc,buffer_size=int(50*scale),in_place=True)
    
-    markers_rbc, rbcR=cell_morphology.blob_markers(label_fg_bg>30,diag.param,scale=scale,fill_tsh=0.85,vis_diag=vis_diag,fig='31')
-    segmentation.clear_border(markers_rbc,buffer_size=diag.param.middle_border,in_place=True)
+#    markers_rbc, rbcR=cell_morphology.blob_markers(label_fg_bg>30,diag.param,scale=scale,fill_tsh=0.85,vis_diag=vis_diag,fig='31')
+#    segmentation.clear_border(markers_rbc,buffer_size=diag.param.middle_border,in_place=True)
 
-    diag.param.rbcR=rbcR
-    diag.measures['rbcR']=rbcR
+#    diag.param.rbcR=rbcR
+#    diag.measures['rbcR']=rbcR
                  
 # TODO: connected component analysis - check if n_RBC can be deduced from component size
 # TODO: detailed analysis of RBC counts and sizes
@@ -129,8 +142,9 @@ for image_file in image_list_indir:
     """
     
     markers_wbc_nuc=cell_morphology.wbc_markers(label_wbc>0,diag.param,scale=scale,fill_tsh=0.33,vis_diag=vis_diag,fig='wbc_nuc')
-    segmentation.clear_border(markers_wbc_nuc,buffer_size=diag.param.middle_border,in_place=True)
+    #segmentation.clear_border(markers_wbc_nuc,buffer_size=diag.param.middle_border,in_place=True)
   
     im_wbc=imtools.overlayImage(im_resize,markers_wbc_nuc,(0,1,0),1,vis_diag=vis_diag,fig='wbc')    
     im_detect=imtools.overlayImage(im_wbc,markers_rbc>0,(1,0,0),1,vis_diag=vis_diag,fig='detections')
     
+    diag.saveDiagImage(im_detect,'detections',savedir=diag_dir)

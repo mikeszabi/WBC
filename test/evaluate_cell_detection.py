@@ -69,6 +69,7 @@ for image_file in image_list_indir:
 def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
     #save_diag=True
     #out_dir=imDirs[i_imDirs]
+    image_dir=r'd:\DATA\Diagon_Test\1219_kezi_diapH_5_7_12'
     plt.ioff()
     # xml is at image file location
     image_list_indir=[]
@@ -81,6 +82,10 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
     for i, image_file in enumerate(image_list_indir):
         print(str(i)+' : '+image_file)
         """
+        READ image
+        """
+        im = io.imread(image_file) # read uint8 image
+        """
         READ auto annotations
         """ 
         head, tail=os.path.splitext(image_file)
@@ -89,6 +94,10 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
             try:
                 xmlReader = annotations.AnnotationReader(xml_file_1)
                 annotations_bb=xmlReader.getShapes()
+                for each_bb in annotations_bb:
+                    bb=each_bb[2]
+                    if min(im.shape[0:2]-np.average(bb,axis=0))<25 or min(np.average(bb,axis=0))<25:
+                        annotations_bb.remove(each_bb)
                 n_wbc=len(annotations_bb)
             except:
                 continue
@@ -110,10 +119,6 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
         else:
             continue
           
-        """
-        READ image
-        """
-        im = io.imread(image_file) # read uint8 image
    
         if save_diag:
             fig = plt.figure(dpi=300)

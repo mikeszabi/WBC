@@ -13,6 +13,7 @@ import sys
 import matplotlib.pyplot as plt
 from matplotlib.path import Path
 import argparse
+import numpy as np
 
 import annotations
 import imtools
@@ -71,7 +72,16 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
         READ image
         """
         im = io.imread(image_file) # read uint8 image
-   
+        
+        """
+        REMOVE ANNOTATIONS CLOSE TO BORDER
+        """
+        for each_bb in annotations_bb:
+            bb=each_bb[2]
+            if min((im.shape[1],im.shape[0])-np.average(bb,axis=0))<25 or min(np.average(bb,axis=0))<25:
+                annotations_bb.remove(each_bb)
+# TODO: add 25 as parameter
+    
         if save_diag:
             fig = plt.figure(dpi=300)
             # Plot manual

@@ -76,12 +76,12 @@ class diagnostics:
         maxI=np.argwhere(self.cumh_hsv[l_dim]>0.95)[0,0]
         
          # Estimate RBC radius
-#        with warnings.catch_warnings():
-#            warnings.simplefilter("ignore")
-#            # TODO: use rgb cahnnel with max siqr, adjust threshold based on siqr
-#            self.gray, scale=imtools.imRescaleMaxDim(self.im_corrected[:,:,ch_maxvar], self.param.small_size, interpolation=0)
-#        self.param.rbcR=self.blob_detection(255-self.gray,scale=scale,max_res=150,min_res=10,\
-#                                            threshold=0.5*self.siqr_rgb[ch_maxvar]/255, vis_diag=vis_diag)   
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            # TODO: use rgb cahnnel with max siqr, adjust threshold based on siqr
+            self.gray, scale=imtools.imRescaleMaxDim(self.im_corrected[:,:,self.ch_maxvar], self.param.small_size, interpolation=0)
+        self.param.rbcR=self.blob_detection(255-self.gray,scale=scale,max_res=150,min_res=10,\
+                                            threshold=0.5*self.siqr_rgb[self.ch_maxvar]/255, vis_diag=vis_diag)   
         
         # fill up measures
                                                                           
@@ -98,6 +98,7 @@ class diagnostics:
         self.measures['saturation_q05']=self.sat_q05
         self.measures['bckg_inhomogenity_pct']=bckg_inhomogenity_pct
         self.measures['bckg_pct']=self.bckg_pct
+        self.measures['rbcR']=self.param.rbcR
         
         self.error_list=[]
         #self.checks()
@@ -116,8 +117,8 @@ class diagnostics:
             self.error_list.append('saturation_q05')
         if self.measures['bckg_pct']>0.75:
             self.error_list.append('bckg_pct')
-#        if self.measures['RBC radius']<15 or self.measures['RBC radius']>50:
-#            self.error_list.append('RBC radius')
+        if self.measures['rbcR']<15 or self.measures['rbcR']>40:
+            self.error_list.append('rbcR')
         if (len(self.error_list)>0):
             print('Error list:')
             for errors in self.error_list:
