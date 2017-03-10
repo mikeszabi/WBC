@@ -34,8 +34,8 @@ import annotations
 
 %matplotlib qt5
 
-image_dir=r'd:\DATA\Diagon_Test\1219_kezi_diapH_5_7_12'
-image_dir=r'd:\Projects\WBC\data\Test\WBC Types\Problem'
+image_dir=r'e:\CELLDATA\Slides\1106_kezi_diapH_5_7_12'
+#image_dir=r'e:\WBC\data\Test\WBC Types\Problem'
 
 included_extenstions = ['*.jpg', '*.bmp', '*.png', '*.gif']
 image_list_indir = []
@@ -46,7 +46,7 @@ for i, image_file in enumerate(image_list_indir):
     print(str(i)+' : '+image_file)
 
 
-image_file=image_list_indir[4]
+image_file=image_list_indir[0]
 
 vis_diag=False
 
@@ -78,7 +78,7 @@ for image_file in image_list_indir:
 # create foreground mask using previously set init centers
     clust_centers_0, label_0 = segmentations.segment_hsv(hsv_resize, init_centers=diag.cent_init,\
                                                          chs=(1,1,2),\
-                                                         n_clusters=4,\
+                                                         n_clusters=5,\
                                                          vis_diag=vis_diag)   
     label_fg_bg=cell_morphology.rbc_labels(im,clust_centers_0,label_0)
 
@@ -86,8 +86,9 @@ for image_file in image_list_indir:
     WBC nucleus masks
     """
 # create segmentation for WBC detection based on hue and saturation
-    mask_sat=np.logical_and(np.logical_and(hsv_resize[:,:,0]>160,hsv_resize[:,:,0]<190),\
-                                           hsv_resize[:,:,1]>diag.sat_q95)
+    label_wbc=np.logical_and(np.logical_and(hsv_resize[:,:,0]>diag.param.wbc_range_in_hue[0]*255,\
+                                            hsv_resize[:,:,0]<diag.param.wbc_range_in_hue[1]*255),\
+                                            hsv_resize[:,:,1]>diag.sat_q95)
     
 # TODO: learn wbc range from mask_sat hue distribution
 #    im_wbc=imtools.overlayImage(im_resize,mask_sat>0,(0,1,1),0.5,vis_diag=vis_diag,fig='sat')    
@@ -116,14 +117,14 @@ for image_file in image_list_indir:
 ##            clust_hue[i]<diag.param.wbc_range_in_hue[1]*255:
 ##            mask_nuc_2[label_1==i]=1    
 ## TODO: add clust_hue to diagnostics
-    label_wbc=mask_sat
     im_wbc=imtools.overlayImage(im_resize,label_wbc>0,(0,1,1),0.5,vis_diag=vis_diag,fig='sat')    
 
     """
     RBC detection
     """
-    label_fg_bg[label_wbc>0]=20
-    mask_fg_clear=cell_morphology.rbc_mask_morphology(im_resize,label_fg_bg,diag.param,scale=scale,label_tsh=30,vis_diag=vis_diag,fig='31')    
+    label_fg_bg[label_wbc>0]=2
+    mask_fg_clear=cell_morphology.rbc_mask_morphology(im_resize,label_fg_bg,diag.param,scale=scale,\
+                                                      label_tsh=2,vis_diag=vis_diag,fig='31')    
 #      
     markers_rbc=cell_morphology.rbc_markers_from_mask(mask_fg_clear,diag.param,scale=scale)
     segmentation.clear_border(markers_rbc,buffer_size=int(50*scale),in_place=True)

@@ -81,7 +81,7 @@ def cell_detector(image_file,save_diag=False,out_dir=''):
 # create foreground mask using previously set init centers
     clust_centers_0, label_0 = segmentations.segment_hsv(hsv_resize, init_centers=diag.cent_init,\
                                                          chs=(1,1,2),\
-                                                         n_clusters=4,\
+                                                         n_clusters=5,\
                                                          vis_diag=vis_diag)   
     label_fg_bg=cell_morphology.rbc_labels(im,clust_centers_0,label_0)
 
@@ -89,16 +89,18 @@ def cell_detector(image_file,save_diag=False,out_dir=''):
     WBC nucleus masks
     """
 # create segmentation for WBC detection based on hue and saturation
-    label_wbc=np.logical_and(np.logical_and(hsv_resize[:,:,0]>160,hsv_resize[:,:,0]<190),\
-                                           hsv_resize[:,:,1]>diag.sat_q95)
+    label_wbc=np.logical_and(np.logical_and(hsv_resize[:,:,0]>diag.param.wbc_range_in_hue[0]*255,\
+                                            hsv_resize[:,:,0]<diag.param.wbc_range_in_hue[1]*255),\
+                                            hsv_resize[:,:,1]>diag.sat_q95)
 # TODO: add clust_hue to diagnostics
 # TODO: learn wbc range from mask_sat hue distribution
 
     """
     RBC detection
     """
-    label_fg_bg[label_wbc>0]=20
-    mask_fg_clear=cell_morphology.rbc_mask_morphology(im_resize,label_fg_bg,diag.param,scale=scale,label_tsh=30,vis_diag=vis_diag,fig='31')    
+    label_fg_bg[label_wbc>0]=2
+    mask_fg_clear=cell_morphology.rbc_mask_morphology(im_resize,label_fg_bg,diag.param,scale=scale,\
+                                                      label_tsh=2,vis_diag=vis_diag,fig='31')
 #      
     markers_rbc=cell_morphology.rbc_markers_from_mask(mask_fg_clear,diag.param,scale=scale)
     segmentation.clear_border(markers_rbc,buffer_size=int(50*scale),in_place=True)
@@ -110,8 +112,9 @@ def cell_detector(image_file,save_diag=False,out_dir=''):
     WBC nucleus detection
     """
     
-    markers_wbc_nuc=cell_morphology.wbc_markers(label_wbc>0,diag.param,scale=scale,fill_tsh=0.33,vis_diag=vis_diag,fig='wbc_nuc')
-    #segmentation.clear_border(markers_wbc_nuc,buffer_size=diag.param.middle_border,in_place=True)
+    markers_wbc_nuc=cell_morphology.wbc_markers(label_wbc>0,diag.param,scale=scale,\
+                                                fill_tsh=0.33,vis_diag=vis_diag,fig='wbc_nuc')
+    segmentation.clear_border(markers_wbc_nuc,buffer_size=diag.param.middle_border,in_place=True)
   
     """
     CHECK ERRORS

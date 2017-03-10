@@ -79,7 +79,8 @@ class diagnostics:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             # TODO: use rgb cahnnel with max siqr, adjust threshold based on siqr
-            self.gray, scale=imtools.imRescaleMaxDim(self.im_corrected[:,:,self.ch_maxvar], self.param.small_size, interpolation=0)
+            self.gray, scale=imtools.imRescaleMaxDim(self.im_corrected[:,:,self.ch_maxvar],\
+                                                     self.param.middle_size, interpolation=0)
         self.param.rbcR=self.blob_detection(255-self.gray,scale=scale,max_res=150,min_res=10,\
                                             threshold=0.5*self.siqr_rgb[self.ch_maxvar]/255, vis_diag=vis_diag)   
         
@@ -146,7 +147,9 @@ class diagnostics:
         return overexpo_mask
     
     def illumination_correction(self):
-        cent_init, label_mask = segmentations.segment_hsv(self.hsv_small, chs=(1,1,2),  n_clusters=4, vis_diag=self.vis_diag)
+        cent_init, label_mask = segmentations.segment_hsv(self.hsv_small, chs=(1,1,2),\
+                                                          n_clusters=5,\
+                                                          vis_diag=self.vis_diag)
         ind_val=np.argsort(cent_init[:,2]) # sure background - highest intensity
         # TODO: check ind_val[-2]
         mask_bg_sure=label_mask == ind_val[-1]
