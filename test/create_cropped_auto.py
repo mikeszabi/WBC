@@ -22,9 +22,10 @@ import cfg
 import detections
 
 
-image_dir=r'C:\Users\mikeszabi\OneDrive\WBC\DATA\Annotated'
-output_dir=r'C:\Users\mikeszabi\OneDrive\WBC\DATA\Detected_Cropped'
-
+output_base_dir=r'C:\Users\mikeszabi\OneDrive\WBC\DATA'
+image_dir=os.path.join(output_base_dir,'Annotated')
+output_dir=os.path.join(output_base_dir,'Detected_Cropped')
+mask_dir=os.path.join(output_base_dir,'Mask')
 
 plt.ioff()
 
@@ -61,13 +62,21 @@ for i, image_file in enumerate(image_list_indir):
     mask_nuc=detections.wbc_nucleus_mask(hsv_resize,diag.param,sat_tsh=diag.sat_q95,scale=scale,vis_diag=False,fig='')
     label_nuc = measure.label(mask_nuc, connectivity=mask_nuc.ndim)
 
+    mask_file_name=str.replace(image_file,image_dir,mask_dir)
+    if not os.path.isdir(os.path.dirname(mask_file_name)):
+        os.makedirs(os.path.dirname(mask_file_name))
+    io.imsave(mask_file_name,255*mask_nuc)
+
     """
-    CALCULATE NUCEUS SATURATION
+    CALCULATE NUCLEUS SATURATION
     """
     sat=hsv_resize[:,:,1]
-    diag.measures['sat_nucleus_mean']=np.median(sat[mask_nuc])
-    diag.measures['sat_nucleus_std']=np.std(sat[mask_nuc])
-    
+    sat=sat[mask_nuc]
+    val=hsv_resize[:,:,2]
+    val=val[mask_nuc]
+    diag.measures['sat_nucleus_median']=np.median(sat)
+    diag.measures['sat_nucleus_std']=np.std(sat)
+    diag.measures['val_nucleus_median']=np.median(val)
     """
     READ manual annotations
     """ 
@@ -122,10 +131,15 @@ for i, image_file in enumerate(image_list_indir):
                     wbc_type='fp' # false positive
                     break
         crop_file=os.path.join(output_dir,wbc_type+'_'+str(i_detected)+'.png')
+        
         io.imsave(crop_file,im_cropped)
-        sample={'im':image_file,'crop':crop_file,'rbcR':diag.param.rbcR,'wbc':wbc_type,\
+        
+        sample={'im':os.path.basename(image_file),'crop':os.path.basename(crop_file),\
+                'rbcR':diag.param.rbcR,'wbc':wbc_type,\
                 'scale':scale,'origo':np.asarray(o)/scale,'radius':r/scale,\
-                'sat_tsh':diag.measures['saturation_q95'],'sat_nucleus_mean':diag.measures['sat_nucleus_mean']}
+                'sat_tsh':diag.measures['saturation_q95'],\
+                'sat_nucleus_median':diag.measures['sat_nucleus_median'],\
+                'val_nucleus_median':diag.measures['val_nucleus_median']}
         samples.append(sample)
         
 keys = samples[0].keys()
