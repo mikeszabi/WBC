@@ -57,26 +57,26 @@ for sd in subdirs:
                 fname=os.path.basename(image_file)
                 fid=fname=os.path.split(sd)[-1]+'__'+os.path.basename(image_file)
                 
-                for i, ann in enumerate(annotations_bb):
-                    minx=min(c[0] for c in ann[2])
-                    miny=min(c[1] for c in ann[2])
-                    maxx=max(c[0] for c in ann[2])
-                    maxy=max(c[1] for c in ann[2])
+                for i, each_bb in enumerate(annotations_bb):
+                    minx=min(c[0] for c in each_bb[2])
+                    miny=min(c[1] for c in each_bb[2])
+                    maxx=max(c[0] for c in each_bb[2])
+                    maxy=max(c[1] for c in each_bb[2])
                     
-                    if sum(c[0]==minx for c in ann[2])!=2 or sum(c[1]==miny for c in ann[2])!=2 or\
-                         sum(c[0]==maxx for c in ann[2])!=2 or sum(c[1]==maxy for c in ann[2])!=2:                       
+                    if sum(c[0]==minx for c in each_bb[2])!=2 or sum(c[1]==miny for c in each_bb[2])!=2 or\
+                         sum(c[0]==maxx for c in each_bb[2])!=2 or sum(c[1]==maxy for c in each_bb[2])!=2:                       
                          sample={'im':image_file,'r':diag.param.rbcR,'wbc':'wrong',\
                                 'minx':minx,'maxx':maxx,'dx':maxx-minx,\
                                 'miny':miny,'maxy':maxy,'dy':maxy-miny}
                          samples.append(sample)
                          continue
                     else:
-                        sample={'im':image_file,'r':diag.param.rbcR,'wbc':ann[0],\
+                        sample={'im':image_file,'r':diag.param.rbcR,'wbc':each_bb[0],\
                                 'minx':minx,'maxx':maxx,'dx':maxx-minx,\
                                 'miny':miny,'maxy':maxy,'dy':maxy-miny}
                         samples.append(sample)
                         im_cropped=im[miny:maxy,minx:maxx,:]
-                        io.imsave(os.path.join(output_dir,ann[0]+'_'+str(i)+'_'+fid),im_cropped)
+                        io.imsave(os.path.join(output_dir,each_bb[0]+'_'+str(i)+'_'+fid),im_cropped)
                     
 #            fig = plt.figure()
 #            fig=imtools.plotShapes(im,annotations_bb,color='b',text='ALL',fig=fig)

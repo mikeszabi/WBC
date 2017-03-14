@@ -52,9 +52,9 @@ def wbc_markers(mask_fg,param,fill_tsh=0.25,scale=1,vis_diag=False,fig=''):
 
     max_dim=max(mask_fg.shape)
     
-    min_r=int(max(mask_fg.shape)/scale/50)
-    max_r=int(max(mask_fg.shape)/scale/20)
-    r_list = np.linspace(min_r, max_r, (max_r-min_r)+1)
+    min_r=2*int(max(mask_fg.shape)/scale/100/2)
+    max_r=2*(max(mask_fg.shape)/scale/20/2)
+    r_list = np.linspace(start=min_r, stop=max_r, num=(max_r-min_r)/2+1)
        
     start_r=0
     r_list=r_list[r_list>start_r]
@@ -79,14 +79,14 @@ def wbc_markers(mask_fg,param,fill_tsh=0.25,scale=1,vis_diag=False,fig=''):
         axs=fig.add_subplot(111)
         axs.imshow(color.gray2rgb(255*mask).astype('uint8'))  
         for l in local_maxima_fill:
-            circ=plt.Circle((l[1],l[0]), radius=r_list[l[2]]*scale, color='g', fill=True)
+            circ=plt.Circle((l[1],l[0]), radius=r_list[l[2]]*scale, color='g', fill=False)
             axs.add_patch(circ)
             
     markers_r=np.zeros(mask_fg.shape)    
     for l in local_maxima_fill:
         markers_r[l[0],l[1]]=r_list[l[2]]    
     # TODO: get rid of dilatation
-    markers=morphology.binary_dilation(markers_r,morphology.disk(10)).astype('uint8')
+    markers=morphology.binary_dilation(markers_r,morphology.disk(1)).astype('uint8')
 #    markers[markers_r>0]=markers_r[markers_r>0]
         
     return markers

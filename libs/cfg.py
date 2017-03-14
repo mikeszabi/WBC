@@ -11,11 +11,11 @@ class param:
     def __init__(self):
         self.pixelSize=1 # in microns
         self.magnification=1
-        self.rbcR=25
+        self.rbcR=25 # 1280/50
         self.cellFillAreaPct=0.5
         self.cellOpeningPct=0.33
         self.small_size=128
-        self.middle_size=512
+        self.middle_size=640
         self.middle_border=10
         #self.cell_bound_pct=0.2
         #self.over_saturated_rbc_ratio=0.75
@@ -26,6 +26,16 @@ class param:
         self.project='WBC'
         self.root_dir=os.curdir
         self.data_dir=os.path.join(self.root_dir,'data','Test','WBC Types')
+        
+        self.wbc_types={\
+            'bne':'Band neutrophiles',\
+            'ne':'Segmented neutrophiles',\
+            'eo':'Eosinophiles',\
+            'ba':'Basophiles',\
+            'mo':'Monocytes',\
+            'ly':'Lymphocytes',\
+            'lgly':'Large granular lymphocytes',\
+            'rly':'Reactive lymphocytes'}
     
     def getImageDirs(self,data_dir=None, dir_name=''):
         if data_dir is None:

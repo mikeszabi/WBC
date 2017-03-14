@@ -16,19 +16,14 @@ import numpy as np
 
 import annotations
 import imtools
+import cfg
 
 def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
     
     plt.ioff()
 
-    wbc_types={'bne':'Band neutrophiles',\
-               'ne':'Segmented neutrophiles',\
-               'eo':'Eosinophiles',\
-               'ba':'Basophiles',\
-               'mo':'Monocytes',\
-               'ly':'Lymphocytes',\
-               'lgly':'Large granular lymphocytes',\
-               'rly':'Reactive lymphocytes'}
+    param=cfg.param
+    wbc_types=param.wbc_types
 
 
     image_list_indir=imtools.imagelist_in_depth(image_dir,level=1)
