@@ -20,5 +20,6 @@ def wbc_nucleus_mask(hsv,param,scale=1,sat_tsh=100,vis_diag=False,fig=''):
 
     mask_fg=label_wbc>0
     mask_fg=morphology.binary_opening(mask_fg,morphology.disk(np.round(param.middle_size/256)))
+#    mask_fg=morphology.binary_closing(mask_fg,morphology.disk(np.round(param.middle_size/128)))
     
     return mask_fg

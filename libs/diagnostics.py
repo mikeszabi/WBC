@@ -34,6 +34,8 @@ class diagnostics:
         self.vis_diag=vis_diag
         self.image_file=image_file
         self.image_shape=(im.shape[0],im.shape[1])
+        self.do_illimination_corection=False
+        self.do_blob_detection=False
                 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -49,7 +51,7 @@ class diagnostics:
         self.bckg_pct, \
         bckg_inhomogenity_pct, \
         self.hsv_corrected, \
-        self.im_corrected=self.illumination_correction()
+        self.im_corrected=self.illumination_correction(do=self.do_illimination_corection)
         
         if self.mask_over.sum()>0 and vis_diag:
             imtools.maskOverlay(im,self.mask_over,0.5,vis_diag=self.vis_diag,fig='overexposition mask')
@@ -76,12 +78,13 @@ class diagnostics:
         maxI=np.argwhere(self.cumh_hsv[l_dim]>0.95)[0,0]
         
          # Estimate RBC radius
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            # TODO: use rgb cahnnel with max siqr, adjust threshold based on siqr
-            self.gray, scale=imtools.imRescaleMaxDim(self.im_corrected[:,:,self.ch_maxvar],\
+        if self.do_blob_detection:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                # TODO: use rgb cahnnel with max siqr, adjust threshold based on siqr
+                gray, scale=imtools.imRescaleMaxDim(self.im_corrected[:,:,self.ch_maxvar],\
                                                      self.param.middle_size, interpolation=0)
-        self.param.rbcR=self.blob_detection(255-self.gray,scale=scale,max_res=150,min_res=10,\
+                self.param.rbcR=self.blob_detection(255-gray,scale=scale,max_res=150,min_res=10,\
                                             threshold=0.5*self.siqr_rgb[self.ch_maxvar]/255, vis_diag=vis_diag)   
         
         # fill up measures
@@ -146,7 +149,7 @@ class diagnostics:
         overexpo_mask=255*overexpo_mask.astype(dtype=np.uint8) 
         return overexpo_mask
     
-    def illumination_correction(self):
+    def illumination_correction(self,do=False):
         cent_init, label_mask = segmentations.segment_hsv(self.hsv_small, chs=(1,1,2),\
                                                           n_clusters=5,\
                                                           vis_diag=self.vis_diag)
@@ -159,8 +162,11 @@ class diagnostics:
             warnings.simplefilter("ignore")
             mask_bg_sure= img_as_ubyte(resize(mask_bg_sure,self.image_shape,order=0))
 # TODO: check background distance transform and coverage (area) - should not be too large, too small
-
-        bckg_inhomogenity_pct, hsv_corrected=illumination_inhomogenity_hsv(self.hsv, mask_bg_sure, vis_diag=self.vis_diag)
+        if do:                                                 
+            bckg_inhomogenity_pct, hsv_corrected=illumination_inhomogenity_hsv(self.hsv, mask_bg_sure, vis_diag=self.vis_diag)
+        else:
+            bckg_inhomogenity_pct=0
+            hsv_corrected=self.hsv
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             im_corrected=img_as_ubyte(color.hsv2rgb(hsv_corrected))
