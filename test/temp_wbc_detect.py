@@ -37,7 +37,7 @@ import detections
 import cell_morphology
 import annotations
 from scipy import ndimage
-
+import time
 import cv2
 
 %matplotlib qt5
@@ -64,15 +64,19 @@ for image_file in image_list_indir:
     i=0
     
     im = io.imread(image_file) # read uint8 image
-   
+    start_time = time.time()
+
     diag=diagnostics.diagnostics(im,image_file,vis_diag=False)
     
+    print("--- %s seconds ---" % (time.time() - start_time))
     output_dir=diag.param.getOutDir(dir_name=os.path.join('output'))
     diag_dir=diag.param.getOutDir(dir_name=os.path.join('diag'))
-   
+    
+    start_time = time.time()
+
     hsv_resize, scale=imtools.imRescaleMaxDim(diag.hsv_corrected,diag.param.middle_size,interpolation = 0)
     im_resize, scale=imtools.imRescaleMaxDim(diag.im_corrected,diag.param.middle_size,interpolation = 0)
- 
+    print("--- %s seconds ---" % (time.time() - start_time))
     """
     WBC nucleus masks
     """
@@ -90,8 +94,14 @@ for image_file in image_list_indir:
 #    mask_fg=morphology.binary_opening(mask_fg,morphology.disk(2))
     #mask_fg=morphology.binary_closing(mask_fg,morphology.disk(2))
     
+    start_time = time.time()
+    
     mask_nuc=detections.wbc_nucleus_mask(hsv_resize,diag.param,sat_tsh=diag.sat_q95,scale=scale,vis_diag=False,fig='')
+    print("--- %s seconds ---" % (time.time() - start_time))
+
+
     im_wbc=imtools.overlayImage(im_resize,mask_nuc,(0,0,1),0.8,vis_diag=vis_diag,fig='sat')    
+    start_time = time.time()
 
     label_img = measure.label(mask_nuc, connectivity=mask_nuc.ndim)
     props = measure.regionprops(label_img)
@@ -138,6 +148,7 @@ for image_file in image_list_indir:
         ax20.scatter(h_pixs, s_pixs, c=c)
         ax20.set_xlim([0, 255])
         ax20.set_ylim([0, 255])
+    print("--- %s seconds ---" % (time.time() - start_time))
         
 #        ax21 = fig2.add_subplot(411)
 #        

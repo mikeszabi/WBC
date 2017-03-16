@@ -31,6 +31,7 @@ train_image_list_file=os.path.join(train_dir,'images_train.csv')
 test_image_list_file=os.path.join(train_dir,'images_test.csv')
 image_data=os.path.join(image_dir,'detections.csv')
 
+
 trainRatio=0.7
 
 
@@ -55,7 +56,7 @@ i=0
 testProds = {}
 trainProds = {}
 
-# TODO: enrichment
+# TODO: enrichment?
 min_count=200
 for cat, count in sampleCount.items():
     catProds=keysWithValue(samples,cat)

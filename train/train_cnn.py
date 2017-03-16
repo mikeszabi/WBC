@@ -22,36 +22,73 @@ from cntk.learner import momentum_sgd, learning_rate_schedule, UnitType, momentu
 from cntk.utils import *
 
 
+data_dir=r'C:\Users\SzMike\OneDrive\WBC\DATA'
+image_dir=os.path.join(data_dir,'Detected_Cropped')
+
+train_dir=os.path.join(data_dir,'Training')
+train_image_list_file=os.path.join(train_dir,'images_train.csv')
+test_image_list_file=os.path.join(train_dir,'images_test.csv')
+
+#train_filename = os.path.join(train_dir,'Train_cntk_text.txt')
+#test_filename = os.path.join(train_dir,'Test_cntk_text.txt')
+#train_regr_labels=os.path.join(train_dir,'train_regrLabels.txt')
+
+train_img_directory = os.path.join(train_dir,'/Train')
+test_img_directory = os.path.join(train_dir,'/Test')
+
+train_map=os.path.join(train_dir,'train_map.txt')
+test_map=os.path.join(train_dir,'test_map.txt')
+# GET train and test map from prepare4train
+
+data_mean_file=os.path.join(train_dir,'data_mean.xml')
+
 # model dimensions
 image_height = 32
 image_width  = 32
 num_channels = 3
 num_classes  = 6
-dataDir='d://Projects//data//PRAKTIKER//'
 
 
 def create_basic_model(input, out_dims):
     
-    net = Convolution((5,5), 16, init=glorot_uniform(), activation=relu, pad=True)(input)
-    net = MaxPooling((3,3), strides=(2,2))(net)
+    convolutional_layer_1  = Convolution((5,5), 16, init=glorot_uniform(), activation=relu, pad=True)(input)
+    pooling_layer_1  = MaxPooling((2,2), strides=(2,2))(convolutional_layer_1 )
 
-#    net = Convolution((5,5), 64, init=glorot_uniform(), activation=relu, pad=True)(net)
-#    net = MaxPooling((3,3), strides=(2,2))(net)
+#    convolutional_layer_2 = Convolution((5,5), 64, init=glorot_uniform(), activation=relu, pad=True)(pooling_layer_1)
+#    pooling_layer_2 = MaxPooling((3,3), strides=(2,2))(convolutional_layer_2)
 #
 #    net = Convolution((5,5), 128, init=glorot_uniform(), activation=relu, pad=True)(net)
 #    net = MaxPooling((3,3), strides=(2,2))(net)
     
-    net = Dense(128, init=glorot_uniform())(net)
-    net = Dense(out_dims, init=glorot_uniform(), activation=None)(net)
+    fully_connected_layer  = Dense(32, init=glorot_uniform())(pooling_layer_1)
+    dropout_layer = Dropout(0.25)(fully_connected_layer)
+
+    output_layer = Dense(out_dims, init=glorot_uniform(), activation=None)(dropout_layer)
     
-    return net
+    return output_layer
+
+def create_basic_model_with_dropout(input, out_dims):
+
+    with default_options(activation=relu):
+        model = Sequential([
+            LayerStack(2, lambda i: [
+                Convolution((5,5), [16,16][i], init=glorot_uniform(), pad=True),
+                BatchNormalization(map_rank=1),
+                MaxPooling((3,3), strides=(2,2))
+            ]),
+            Dense(32, init=glorot_uniform()),
+            Dropout(0.25),
+            Dense(out_dims, init=glorot_uniform(), activation=None)
+        ])
+
+    return model(input)
  
 def create_basic_model_with_batch_normalization(input, out_dims):
 
     with default_options(activation=relu):
         model = Sequential([
-            LayerStack(3, lambda i: [
-                Convolution((5,5), [32,32,64][i], init=glorot_uniform(), pad=True),
+            LayerStack(2, lambda i: [
+                Convolution((5,5), [5,5,16][i], init=glorot_uniform(), pad=True),
                 BatchNormalization(map_rank=1),
                 MaxPooling((3,3), strides=(2,2))
             ]),
@@ -70,10 +107,10 @@ def create_reader(map_file, mean_file, train):
   
     # transformation pipeline for the features has jitter/crop only when training
     transforms = []
-    if train:
-        transforms += [
-            ImageDeserializer.crop(crop_type='Random', ratio=0.8, jitter_type='uniRatio') # train uses jitter
-        ]
+#    if train:
+#        transforms += [
+#            ImageDeserializer.crop(crop_type='Random', ratio=0.8, jitter_type='uniRatio') # train uses jitter
+#        ]
     transforms += [
         ImageDeserializer.scale(width=image_width, height=image_height, channels=num_channels, interpolations='linear'),
         ImageDeserializer.mean(mean_file)
@@ -108,8 +145,8 @@ def train_and_evaluate(reader_train, reader_test, max_epochs, model_func):
     pe = classification_error(z, label_var)
 
     # training config
-    epoch_size     = 20292
-    minibatch_size = 32
+    epoch_size     = 1050
+    minibatch_size = 16
 
     # Set training parameters
     lr_per_minibatch       = learning_rate_schedule([0.01]*10 + [0.003]*10 + [0.001],  UnitType.minibatch, epoch_size)
@@ -154,7 +191,7 @@ def train_and_evaluate(reader_train, reader_test, max_epochs, model_func):
     #
     # Evaluation action
     #
-    epoch_size     = 8665
+    epoch_size     = 450
     minibatch_size = 16
 
     # process minibatches and evaluate the model
@@ -162,6 +199,11 @@ def train_and_evaluate(reader_train, reader_test, max_epochs, model_func):
     metric_denom    = 0
     sample_count    = 0
     minibatch_index = 0
+
+    input_map = {
+        input_var: reader_test.streams.features,
+        label_var: reader_test.streams.labels
+    }
 
     while sample_count < epoch_size:
         current_minibatch = min(minibatch_size, epoch_size - sample_count)
@@ -209,10 +251,8 @@ def train_and_evaluate(reader_train, reader_test, max_epochs, model_func):
     
     return softmax(z)
     
-reader_train = create_reader(os.path.join(train_dir, 'train_map.txt'), os.path.join(train_dir, 'PRAKTIKER_mean.xml'), True)
-reader_test  = create_reader(os.path.join(train_dir, 'test_map.txt'), os.path.join(train_dir, 'PRAKTIKER_mean.xml'), False)
+reader_train = create_reader(train_map, data_mean_file, True)
+reader_test  = create_reader(test_map, data_mean_file, False)
 
-#pred = train_and_evaluate(reader_train, reader_test, max_epochs=10, model_func=create_basic_model)
-
-
+pred = train_and_evaluate(reader_train, reader_test, max_epochs=300, model_func=create_basic_model)
 #pred_batch= train_and_evaluate(reader_train, reader_test, max_epochs=10, model_func=create_basic_model_with_batch_normalization)

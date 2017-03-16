@@ -36,6 +36,12 @@ class param:
             'ly':'Lymphocytes',\
             'lgly':'Large granular lymphocytes',\
             'rly':'Reactive lymphocytes'}
+        self.wbc_basic_types={\
+            'ne':'1',\
+            'eo':'2',\
+            'ba':'3',\
+            'mo':'4',\
+            'ly':'5'}
     
     def getImageDirs(self,data_dir=None, dir_name=''):
         if data_dir is None:

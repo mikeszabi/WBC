@@ -14,41 +14,68 @@ Created on Thu Dec 22 13:29:36 2016
 
 # https://github.com/Microsoft/CNTK/blob/v2.0.beta6.0/Tutorials/CNTK_201A_CIFAR-10_DataLoader.ipynb
 
+import __init__
+from collections import Counter
 
-from PIL import Image
+import pandas as pd
 import numpy as np
 import os
 import xml.etree.cElementTree as et
 import xml.dom.minidom
 import csv
+import skimage.io as io
+
+import imtools
 
 #%matplotlib inline
 
 # Config matplotlib for inline plotting
 
 imgSize = 32
+nCh=3
 numFeature = imgSize * imgSize * 3
+num_classes  = 6
+
+label_base=np.zeros(num_classes)
 
 # Paths for saving the text files
 
 data_dir=r'C:\Users\SzMike\OneDrive\WBC\DATA'
 image_dir=os.path.join(data_dir,'Detected_Cropped')
-
 train_dir=os.path.join(data_dir,'Training')
+
 train_image_list_file=os.path.join(train_dir,'images_train.csv')
 test_image_list_file=os.path.join(train_dir,'images_test.csv')
 
-train_filename = os.path.join(train_dir,'Train_cntk_text.txt')
-test_filename = os.path.join(train_dir,'Test_cntk_text.txt')
+train_img_directory = os.path.join(train_dir,'Train')
+test_img_directory = os.path.join(train_dir,'Test')
 
-train_img_directory = os.path.join(train_dir,'/Train')
-test_img_directory = os.path.join(train_dir,'/Test')
+train_map_o=os.path.join(train_dir,'train_map.txt')
+test_map_o=os.path.join(train_dir,'test_map.txt')
 
-train_map=os.path.join(train_dir,'train_map.txt')
-test_map=os.path.join(train_dir,'test_map.txt')
-train_regr_labels=os.path.join(train_dir,'train_regrLabels.txt')
+#train_regr_labels=os.path.join(train_dir,'train_regrLabels.txt')
 
 data_mean_file=os.path.join(train_dir,'data_mean.xml')
+
+def keysWithValue(aDict, target):
+    return sorted(key for key, value in aDict.items() if target == value)
+
+
+def enrichMap(mapfile,max_count=200):
+    df = pd.read_csv(mapfile,delimiter='\t',names=('image','label'))
+    label_grouping = df.groupby('label')
+
+    df_enrich = [] #pd.DataFrame({'image' : [], 'label' : []})
+    e_groups = [label.sample(max_count,replace=True) for count,label in label_grouping]
+    df_enrich=pd.concat(e_groups)    
+    # random shuffle
+    df_enrich=df_enrich.sample(frac=1)  
+    head, tail=os.path.splitext(mapfile)
+    e_mapfile=head+'_e'+str(max_count)+tail
+    df_enrich.to_csv(e_mapfile,header=False,sep='\t')
+    
+    return e_mapfile
+ 
 
 def saveImage(fname, pixData, label, mapFile, regrFile, pad, **key_parms):
 
@@ -58,18 +85,15 @@ def saveImage(fname, pixData, label, mapFile, regrFile, pad, **key_parms):
     if pad > 0:
         pixData = np.pad(pixData, ((0, 0), (pad, pad), (pad, pad)), mode='constant', constant_values=128) 
 
-    img = Image.new('RGB', (imgSize + 2 * pad, imgSize + 2 * pad))
-    pixels = img.load()
-    for x in range(img.size[0]):
-        for y in range(img.size[1]):
-            pixels[x, y] = (pixData[0][y][x], pixData[1][y][x], pixData[2][y][x])
-    img.save(fname)
+    data=np.transpose(pixData, (1, 2, 0))
+   
+    io.imsave(fname,data)
     mapFile.write("%s\t%d\n" % (fname, label))
     
     # compute per channel mean and store for regression example
     channelMean = np.mean(pixData, axis=(1,2))
     regrFile.write("|regrLabels\t%f\t%f\t%f\n" % (channelMean[0]/255.0, channelMean[1]/255.0, channelMean[2]/255.0))
-    
+#    
 def saveMean(fname, data):
     root = et.Element('opencv_storage')
     et.SubElement(root, 'Channel').text = '3'
@@ -87,9 +111,9 @@ def saveMean(fname, data):
     with open(fname, 'w') as f:
         f.write(x.toprettyxml(indent = '  '))
 
-def saveTrainImages(filename, train_dir):
-    if not os.path.exists(train_dir):
-        os.makedirs(train_dir)
+def saveTrainImages(filename, image_dir, train_dir):
+    if not os.path.exists(os.path.join(train_dir,'Train')):
+        os.makedirs(os.path.join(train_dir,'Train'))
     data = {}
     dataMean = np.zeros((3, imgSize, imgSize)) # mean is in CHW format.
     
@@ -100,27 +124,26 @@ def saveTrainImages(filename, train_dir):
     with open(os.path.join(train_dir,'train_map.txt'), 'w') as mapFile:
         with open(os.path.join(train_dir,'train_regrLabels.txt'), 'w') as regrFile:
             for row in reader:
-                try:
-                    prods[row['image']]=row['category']
+                label=int(row['category'])
+#                lab=label_base.copy()
+#                lab[label]=1
+                prods[row['image']]=row['category']
 # read image file
 # create data sequence RRR GGG BBB
+                fname = os.path.join(image_dir,row['image'])
+                im = io.imread(fname)
+                data,scale=imtools.imRescaleMaxDim(im,imgSize, boUpscale = True, interpolation = 0)
+                fname = os.path.join(train_dir,'Train',os.path.basename(row['image'])) # .decode('utf-8')  -solves unicode problem
+                data=np.transpose(data, (2, 0, 1)) # CHW format.
+                saveImage(fname, data, label, mapFile, regrFile, 0, mean=dataMean)
 
-# TODO: check THIS PART!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                    fname = str.replace(row['image'],'mikeszabi','SzMike')
-                    im = Image.open(fname)
-                    im.thumbnail([imgSize, imgSize], Image.ANTIALIAS)
-                    fname = os.path.join(train_dir,os.path.basename(row['image'])) # .decode('utf-8')  -solves unicode problem
-                    data=np.array(im.getdata()).reshape(im.size[0], im.size[1], 3)
-                    data=np.transpose(data, (2, 0, 1)) # CHW format.
-                    saveImage(fname, data, int(row['category']), mapFile, regrFile, 4, mean=dataMean)
-                except:
-                    print(row)
-    dataMean = dataMean / len(prods)
+#    dataMean = dataMean / len(prods)
+    dataMean = 128*np.ones((3, imgSize, imgSize))
     saveMean(os.path.join(train_dir,'data_mean.xml'), dataMean)
 
-def saveTestImages(filename, train_dir):
-    if not os.path.exists(train_dir):
-        os.makedirs(train_dir)
+def saveTestImages(filename, image_dir, train_dir):
+    if not os.path.exists(os.path.join(train_dir,'Test')):
+        os.makedirs(os.path.join(train_dir,'Test'))
         
     # Szabi code
     reader =csv.DictReader(open(filename, 'rt'), delimiter=';')
@@ -129,27 +152,25 @@ def saveTestImages(filename, train_dir):
     with open(os.path.join(train_dir,'test_map.txt'), 'w') as mapFile:
         with open(os.path.join(train_dir,'test_regrLabels.txt'), 'w') as regrFile:
             for row in reader:
-                try:
-                    prods[row['image']]=row['category']
+                prods[row['image']]=row['category']
 # read image file
 # create data sequence RRR GGG BBB
 
-# TODO: check THIS PART!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-                    fname = str.replace(row['image'],'mikeszabi','SzMike')
-                    im = Image.open(fname)
-                    im.thumbnail([imgSize, imgSize], Image.ANTIALIAS)
-                    fname = os.path.join(train_dir,os.path.basename(row['image'])) # .decode('utf-8')  -solves unicode problem
-                    data=np.array(im.getdata()).reshape(im.size[0], im.size[1], 3)
-                    data=np.transpose(data, (2, 0, 1)) # CHW format.
-                    saveImage(fname, data, int(row['category']), mapFile, regrFile, 0)
-                except:
-                    print(row)
+                fname = os.path.join(image_dir,row['image'])
+                im = io.imread(fname)                  
+                data,scale=imtools.imRescaleMaxDim(im,imgSize, boUpscale = True, interpolation = 0)
+                fname = os.path.join(train_dir,'Test',os.path.basename(row['image'])) # .decode('utf-8')  -solves unicode problem
+                data=np.transpose(data, (2, 0, 1)) # CHW format.
+                saveImage(fname, data, int(row['category']), mapFile, regrFile, 0)
 
 
 print ('Converting train data to png images...')
-saveTrainImages(train_image_list_file, train_dir)
+saveTrainImages(train_image_list_file, image_dir,train_dir)
 print ('Done.')
 print ('Converting test data to png images...')
-saveTestImages(test_image_list_file, train_dir)
+saveTestImages(test_image_list_file, image_dir,train_dir)
 print ('Done.')
+
+# enrich!
+train_map=enrichMap(train_map_o,max_count=210)
+test_map=enrichMap(test_map_o,max_count=90)
