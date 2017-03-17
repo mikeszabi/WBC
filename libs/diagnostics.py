@@ -36,6 +36,7 @@ class diagnostics:
         self.image_shape=(im.shape[0],im.shape[1])
         self.do_illimination_corection=False
         self.do_blob_detection=False
+        self.nRBC=0
                 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -87,7 +88,7 @@ class diagnostics:
                 self.param.rbcR=self.blob_detection(255-gray,scale=scale,max_res=150,min_res=10,\
                                             threshold=0.5*self.siqr_rgb[self.ch_maxvar]/255, vis_diag=vis_diag)   
         
-        # fill up measures
+        # fill up initial measures
                                                                           
         self.measures['siqr_rgb']=self.siqr_rgb
         self.measures['siqr_hsv']=self.siqr_hsv

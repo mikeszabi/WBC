@@ -133,7 +133,7 @@ def imRescaleMaxDim(im, maxDim, boUpscale = False, interpolation = 1):
 
 def plotShapes(im, shapelist, detect_shapes='ALL',color='g', text='ALL', fig=None):
     if fig is None:
-        fig=plt.figure('shapes image')
+        fig=plt.figure('shapes image',figsize=(20,20))
     axs=fig.add_subplot(111)
     axs.imshow(im)  
     for shape in shapelist:
@@ -142,9 +142,9 @@ def plotShapes(im, shapelist, detect_shapes='ALL',color='g', text='ALL', fig=Non
             pts=np.asarray(pts)
             pts=np.concatenate((pts,np.reshape(pts[0,:],(1,2))),axis=0)
         if detect_shapes=='ALL' or shape[0] in detect_shapes:           
-            axs.plot(pts[:,0], pts[:,1], markersize =2, color=color, marker='.')
+            axs.plot(pts[:,0], pts[:,1], markersize =5, color=color, marker='.')
         if text=='ALL' or shape[0] in text:   
-            axs.annotate(shape[0],size=5,xy=(pts[0,0], pts[0, 1]),bbox=dict(boxstyle="round", fc="White", ec=color, lw=1),color=color)
+            axs.annotate(shape[0],size=10,xy=(pts[0,0], pts[0, 1]),bbox=dict(boxstyle="round", fc="White", ec=color, lw=1),color=color)
     return fig
     
 def histogram_similarity(hist, reference_hist):
