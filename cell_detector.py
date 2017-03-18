@@ -160,9 +160,9 @@ if __name__=='__main__':
     
     if inargs.b is None:
         print('Single image process')
-        cell_detector(path_str,save_diag=inargs.s==inargs.s,out_dir=inargs.o)
+        cell_detector(path_str,save_diag=inargs.s,out_dir=inargs.o)
     else:
         print('Batch execution')
-        batch_cell_detector(path_str,save_diag=inargs.s==inargs.s,out_dir=inargs.o)    
+        batch_cell_detector(path_str,save_diag=inargs.s,out_dir=inargs.o)    
     sys.exit(1)
   

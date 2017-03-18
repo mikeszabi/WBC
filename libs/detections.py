@@ -52,20 +52,21 @@ def wbc_regions(mask_nuc,param,scale=1,vis_diag=False,fig=''):
         i_clean+=1
         label_wbc[label_nuc==ip+1]=i_clean
 
-# Merge small neighbouring areas                       
-    po=np.asarray([p.centroid for p in props_large])
-    cent_dist=segmentations.center_diff_matrix(po,metric='euclidean')
-
-
-# TODO: handle 2 thresholds: distance and size
-
-    # merging regions
-    merge_pair_indices=np.argwhere(np.logical_and(cent_dist<2*param.rbcR,cent_dist>0))
+# Merge small neighbouring areas    
+    if len(props_large)>0:                   
+        po=np.asarray([p.centroid for p in props_large])
+        cent_dist=segmentations.center_diff_matrix(po,metric='euclidean')
     
-    for mi in merge_pair_indices:
-        if mi[0]<mi[1] and\
-            (props_large[mi[0]].area+props_large[mi[1]].area<2*param.rbcR**2*np.pi*scale**2):
-                label_wbc[label_wbc==mi[0]+1]=label_wbc[label_wbc==mi[1]+1].max()
+    
+    # TODO: handle 2 thresholds: distance and size
+    
+        # merging regions
+        merge_pair_indices=np.argwhere(np.logical_and(cent_dist<2*param.rbcR,cent_dist>0))
+        
+        for mi in merge_pair_indices:
+            if mi[0]<mi[1] and\
+                (props_large[mi[0]].area+props_large[mi[1]].area<2*param.rbcR**2*np.pi*scale**2):
+                    label_wbc[label_wbc==mi[0]+1]=label_wbc[label_wbc==mi[1]+1].max()
 
     prop_wbc=measure.regionprops(label_wbc)
     
