@@ -22,7 +22,7 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
     
     plt.ioff()
 
-    param=cfg.param
+    param=cfg.param()
     wbc_types=param.wbc_types
 
 
@@ -75,14 +75,14 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
 # TODO: add 25 as parameter
     
         if save_diag:
-            fig = plt.figure(dpi=300)
+            fig = plt.figure('detections',figsize=(20,20),dpi=300)
             # Plot manual
             fig=imtools.plotShapes(im,annotations_bb,color='b',\
                                    detect_shapes=list(wbc_types.keys()),text='ALL',fig=fig)
             # Plot automatic
             fig=imtools.plotShapes(im,shapelist,color='r',\
                                    detect_shapes='ALL',text=('WBC'),fig=fig)
-            head, tail = str.split(xml_file_2,'.')
+            head, tail = str.split(os.path.abspath(xml_file_2),'.')
             detect_image_file=os.path.join(head+'_annotations.jpg')
             fig.savefig(detect_image_file,dpi=300)
             plt.close(fig)
@@ -109,9 +109,10 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
                     for each_bb in annotations_bb:
                         if each_bb[0] in list(wbc_types.keys()):
                             bb=Path(each_bb[2])
-                            intersect = bb.contains_points(each_shape[2])    
+                            center_point=[np.mean(each_shape[2],axis=0).tolist()]
+                            intersect = bb.contains_points(center_point)    
                             if intersect.sum()>0:
-                                p_over=intersect.sum()/len(each_shape[2])
+                                p_over=intersect.sum()/len(center_point)
                                 n_wbc_matched+=p_over
                                 annotations_bb.remove(each_bb)
                                 break

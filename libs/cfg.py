@@ -25,7 +25,7 @@ class param:
         #self.hueWidth=2
         self.project='WBC'
         self.root_dir=os.curdir
-        self.data_dir=os.path.join(self.root_dir,'data','Test','WBC Types')
+        self.data_dir=os.path.join(self.root_dir,'data')
         
         self.wbc_types={\
             'bne':'Band neutrophiles',\

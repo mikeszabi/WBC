@@ -60,7 +60,6 @@ vis_diag=False
 for image_file in image_list_indir:
 
     print(image_file)
-    i=0
     
     im = io.imread(image_file) # read uint8 image
     
@@ -94,12 +93,8 @@ for image_file in image_list_indir:
     mask_nuc=detections.wbc_nucleus_mask(hsv_resize,diag.param,sat_tsh=diag.sat_q95,scale=scale,vis_diag=False,fig='')
 
     print("--- %s seconds - WBC nucleus mask ---" % (time.time() - start_time))
-
-    im_nuc=imtools.overlayImage(im_resize,mask_nuc,(0,0,1),0.8,vis_diag=vis_diag,fig='nuc')    
-
-
     """
-    CELL MASK
+    CELL FOREGORUND MASK
     """
     start_time = time.time() 
     
@@ -108,69 +103,31 @@ for image_file in image_list_indir:
     print("--- %s seconds - CELL mask ---" % (time.time() - start_time))
 
     """
-    CELL MARKERS
+    CELL MARKERS AnD REGIONS
     """
     start_time = time.time()  
     
-    markers_rbc=detections.cell_markers_from_mask(mask_cell,diag.param,scale=scale,vis_diag=vis_diag,fig='cell_markers')         
+    markers_rbc, prop_rbc=detections.cell_markers_from_mask(mask_cell,diag.param,scale=scale,vis_diag=vis_diag,fig='cell_markers')         
 
     print("--- %s seconds - CELL markers ---" % (time.time() - start_time))
-
-    im_rbc=imtools.overlayImage(im_resize,markers_rbc,(1,0,0),1,vis_diag=vis_diag,fig='sat')    
-
-
     """
     CREATE WBC REGIONS
     """
-    label_nuc = measure.label(mask_nuc, connectivity=mask_nuc.ndim)
+    start_time = time.time()      
     
-#    start_time = time.time()
-   
-    props = measure.regionprops(label_nuc)
-#    print("--- %s seconds ---" % (time.time() - start_time))
- 
-    label_wbc=np.zeros(label_nuc.shape).astype('int32')
-    props_large=props.copy()
-    i_clean=0
-    for ip, p in enumerate(props):
-        if p.area<0.1*diag.param.rbcR**2*np.pi*scale**2:
-            props_large.remove(p)
-            continue
-        if p.centroid[0]-p.major_axis_length<0 or p.centroid[0]+p.major_axis_length>im_resize.shape[0]:
-            props_large.remove(p)
-            continue
-        if p.centroid[1]-p.major_axis_length<0 or p.centroid[1]+p.major_axis_length>im_resize.shape[1]:
-            props_large.remove(p)
-            continue
-        i_clean+=1
-        label_wbc[label_nuc==ip+1]=i_clean
-
-    im_wbc=imtools.overlayImage(im_resize,label_wbc>0,(0,0,1),0.8,vis_diag=vis_diag,fig='sat')    
-                       
-    po=np.asarray([p.centroid for p in props_large])
-    cent_dist=segmentations.center_diff_matrix(po,metric='euclidean')
-
-
-    # TODO: handle 2 thresholds: distance and size
-
-    # merging regions
-    merge_pair_indices=np.argwhere(np.logical_and(cent_dist<2*diag.param.rbcR,cent_dist>0))
+    prop_wbc=detections.wbc_regions(mask_nuc,diag.param,scale=scale)
     
-    for mi in merge_pair_indices:
-        if mi[0]<mi[1] and\
-            (props_large[mi[0]].area+props_large[mi[1]].area<2*diag.param.rbcR**2*np.pi*scale**2):
-                label_wbc[label_wbc==mi[0]+1]=label_wbc[label_wbc==mi[1]+1].max()
-
-    prop_wbc=measure.regionprops(label_wbc)
-    diag.measures['n_WBC']=len(prop_wbc)
-   
+    print("--- %s seconds - CELL markers ---" % (time.time() - start_time))
+  
     """
     CREATE RBC REGIONS
     """    
-    label_rbc = measure.label(markers_rbc, connectivity=mask_nuc.ndim)
-    prop_rbc=measure.regionprops(label_rbc)
+    
+    diag.measures['n_WBC']=len(prop_wbc)
     diag.measures['n_RBC']=len(prop_rbc)
     
+    im_rbc=imtools.overlayImage(im_resize,mask_cell,(1,0,0),0.5,vis_diag=vis_diag,fig='sat')    
+    im_nuc=imtools.overlayImage(im_rbc,mask_nuc,(0,0,1),0.5,vis_diag=vis_diag,fig='nuc')    
     
 #    fig = plt.figure('detections')
 #    ax = fig.add_subplot(111)

@@ -11,15 +11,12 @@ import argparse
 import numpy as np;
 import skimage.io as io
 from skimage import measure
-from skimage import segmentation
-
 # %matplotlib qt5
  
 import __init__
 import imtools
 import diagnostics
-import segmentations
-import cell_morphology
+import detections
 import annotations
 
 
@@ -50,65 +47,48 @@ def cell_detector(image_file,save_diag=False,out_dir=''):
         print('not color image')
         return []    
    
-# SET THE PARAMETERS and DO DIAGNOSTICS
-# diagnose image, create overexpo mask and correct for inhomogen illumination
-    diag=diagnostics.diagnostics(im,image_file,vis_diag=vis_diag)
-    
+    """
+    DIAGNOSTICS
+    """                     
+    diag=diagnostics.diagnostics(im,image_file,vis_diag=False)        
+    """
+    CREATE OUTPUT AND DIAG DIRS
+    """
+       
     output_dir=diag.param.getOutDir(dir_name=os.path.join('output',out_dir))
     diag_dir=diag.param.getOutDir(dir_name=os.path.join('diag',out_dir))
-
-            
-# SMOOTHING
-#im_smooth=imtools.smooth3ch(im,r=5)
- 
-    """
-    Foreground masks
-    """  
-# SMOOTHING
-#hsv_smooth=imtools.smooth3ch(diag.hsv_corrected,r=5)         
-
     
+    """
+    RESIZE
+    """    
     hsv_resize, scale=imtools.imRescaleMaxDim(diag.hsv_corrected,diag.param.middle_size,interpolation = 0)
     im_resize, scale=imtools.imRescaleMaxDim(diag.im_corrected,diag.param.middle_size,interpolation = 0)
- 
-# create foreground mask using previously set init centers
-    clust_centers_0, label_0 = segmentations.segment_hsv(hsv_resize, init_centers=diag.cent_init,\
-                                                         chs=(1,1,2),\
-                                                         n_clusters=5,\
-                                                         vis_diag=vis_diag)   
-    label_fg_bg=cell_morphology.rbc_labels(im,clust_centers_0,label_0)
-
     """
     WBC nucleus masks
+    """    
+    mask_nuc=detections.wbc_nucleus_mask(hsv_resize,diag.param,sat_tsh=diag.sat_q95,scale=scale,vis_diag=False,fig='')
     """
-# create segmentation for WBC detection based on hue and saturation
-    label_wbc=np.logical_and(np.logical_and(hsv_resize[:,:,0]>diag.param.wbc_range_in_hue[0]*255,\
-                                            hsv_resize[:,:,0]<diag.param.wbc_range_in_hue[1]*255),\
-                                            hsv_resize[:,:,1]>diag.sat_q95)
-# TODO: add clust_hue to diagnostics
-# TODO: learn wbc range from mask_sat hue distribution
-
-    """
-    RBC detection
-    """
-    label_fg_bg[label_wbc>0]=2
-    mask_fg_clear=cell_morphology.rbc_mask_morphology(im_resize,label_fg_bg,diag.param,scale=scale,\
-                                                      label_tsh=2,vis_diag=vis_diag,fig='31')
-#      
-    markers_rbc=cell_morphology.rbc_markers_from_mask(mask_fg_clear,diag.param,scale=scale)
-    segmentation.clear_border(markers_rbc,buffer_size=int(50*scale),in_place=True)
-   
-# TODO: connected component analysis - check if n_RBC can be deduced from component size
-# TODO: detailed analysis of RBC counts and sizes
-
-    """
-    WBC nucleus detection
-    """
+    CELL FOREGORUND MASK
+    """    
+    mask_cell=detections.cell_mask(hsv_resize,diag.param,scale=scale,mask=mask_nuc,init_centers=diag.cent_init,vis_diag=vis_diag,fig='cell_mask')
     
-    markers_wbc_nuc=cell_morphology.wbc_markers(label_wbc>0,diag.param,scale=scale,\
-                                                fill_tsh=0.33,vis_diag=vis_diag,fig='wbc_nuc')
-    segmentation.clear_border(markers_wbc_nuc,buffer_size=diag.param.middle_border,in_place=True)
-  
+    """
+    CELL MARKERS AnD REGIONS
+    """    
+    markers_rbc, prop_rbc=detections.cell_markers_from_mask(mask_cell,diag.param,scale=scale,vis_diag=vis_diag,fig='cell_markers')         
+    """
+    CREATE WBC REGIONS
+    """    
+    prop_wbc=detections.wbc_regions(mask_nuc,diag.param,scale=scale)
+      
+    """
+    CREATE RBC REGIONS
+    """    
+    
+    diag.measures['n_WBC']=len(prop_wbc)
+    diag.measures['n_RBC']=len(prop_rbc)
+    
+   
     """
     CHECK ERRORS
     """
@@ -120,23 +100,15 @@ def cell_detector(image_file,save_diag=False,out_dir=''):
     """
     CREATE shapes
     """
-    cnts_RBC = measure.find_contours(markers_rbc>0, 0.5)
-    cnts_WBC = measure.find_contours(markers_wbc_nuc>0, 0.5)
-    
     shapelist=[]
-    for c in cnts_RBC:
-         c=np.reshape(np.average(c,axis=0),(1,2))
-         pts=[]
-         for yx in c:
-             pts.append((yx[1]/scale,yx[0]/scale))
-         one_shape=('RBC','point',pts,'None','None')
+    for p in prop_rbc:
+         pts=[(p.centroid[1]/scale,p.centroid[0]/scale)]
+         one_shape=('RBC','circle',pts,'None','None')
          shapelist.append(one_shape)
-    for c in cnts_WBC:
-         c=np.reshape(np.average(c,axis=0),(1,2))
-         pts=[]
-         for yx in c:
-             pts.append((yx[1]/scale,yx[0]/scale))
-         one_shape=('WBC','polygon',pts,'None','None')
+    for p in prop_wbc:
+         pts=[(p.centroid[1]/scale+p.major_axis_length*np.cos(theta*2*np.pi/20)/scale,p.centroid[0]/scale+p.major_axis_length*np.sin(theta*2*np.pi/20)/scale) for theta in range(20)] 
+         #pts=[(p.centroid[1]/scale,p.centroid[0]/scale)]
+         one_shape=('WBC','circle',pts,'None','None')
          shapelist.append(one_shape)
     
     head, tail=os.path.split(image_file)
@@ -149,18 +121,20 @@ def cell_detector(image_file,save_diag=False,out_dir=''):
     CREATE and SAVE DIAGNOSTICS IMAGES
     """
     if save_diag:
-        im_wbc=imtools.overlayImage(im_resize,markers_wbc_nuc>0,(0,1,0),1,vis_diag=vis_diag,fig='wbc')    
-        im_detect=imtools.overlayImage(im_wbc,markers_rbc>0,(1,0,0),1,vis_diag=False,fig='detections')
-        border=np.zeros(im_resize.shape[0:2]).astype('uint8')
-        border[0:diag.param.middle_border,:]=1
-        border[-diag.param.middle_border-1:-1,:]=1     
-        border[:,0:diag.param.middle_border]=1
-        border[:,-diag.param.middle_border-1:-1]=1    
-        im_detect=imtools.overlayImage(im_detect,border>0,\
-                (1,1,0),0.2,vis_diag=vis_diag,fig='detections')       
-        im_detect,scale=imtools.imRescaleMaxDim(im_detect,diag.param.middle_size,interpolation = 1)
-        
+        im_rbc=imtools.overlayImage(im_resize,markers_rbc,(1,0,0),1,vis_diag=vis_diag,fig='sat')    
+        im_detect=imtools.overlayImage(im_rbc,mask_nuc,(0,0,1),0.5,vis_diag=vis_diag,fig='nuc')    
+    
+#        border=np.zeros(im_resize.shape[0:2]).astype('uint8')
+#        border[0:diag.param.middle_border,:]=1
+#        border[-diag.param.middle_border-1:-1,:]=1     
+#        border[:,0:diag.param.middle_border]=1
+#        border[:,-diag.param.middle_border-1:-1]=1    
+#        im_detect=imtools.overlayImage(im_nuc,border>0,\
+#                (1,1,0),0.2,vis_diag=vis_diag,fig='detections')       
+#        im_detect,scale=imtools.imRescaleMaxDim(im_detect,diag.param.middle_size,interpolation = 1)
+#        
         diag.saveDiagImage(im_detect,'detections',savedir=diag_dir)
+        
         diag.writeDiagnostics(diag_dir)   
 
 

@@ -6,6 +6,7 @@ Created on Tue Mar 14 10:09:21 2017
 """
 from skimage import morphology
 from skimage import feature
+from skimage import measure
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -17,15 +18,63 @@ def wbc_nucleus_mask(hsv,param,scale=1,sat_tsh=100,vis_diag=False,fig=''):
  
 # create segmentation for WBC detection based on hue and saturation
 # fix hue range is used
-    mask_fg=np.logical_and(np.logical_and(hsv[:,:,0]>param.wbc_range_in_hue[0]*255,\
+    mask_nuc=np.logical_and(np.logical_and(hsv[:,:,0]>param.wbc_range_in_hue[0]*255,\
                                             hsv[:,:,0]<param.wbc_range_in_hue[1]*255),\
                                             hsv[:,:,1]>sat_tsh) 
-
+    
 # morphological opening to eliminate small detections    
-    mask_fg=morphology.binary_opening(mask_fg,morphology.disk(np.round(max(hsv.shape)/256)))
+    mask_nuc=morphology.binary_opening(mask_nuc,morphology.disk(np.round(max(hsv.shape)/256)))
 #    mask_fg=morphology.binary_closing(mask_fg,morphology.disk(np.round(param.middle_size/128)))
     
-    return mask_fg
+    return mask_nuc
+
+
+def wbc_regions(mask_nuc,param,scale=1,vis_diag=False,fig=''):
+    
+    label_nuc = measure.label(mask_nuc, connectivity=mask_nuc.ndim)
+       
+    props = measure.regionprops(label_nuc) 
+
+# 1st. step: remove small and boundary regions
+    label_wbc=np.zeros(label_nuc.shape).astype('int32')
+    props_large=props.copy()
+    i_clean=0
+    for ip, p in enumerate(props):
+        if p.area<0.1*param.rbcR**2*np.pi*scale**2:
+            props_large.remove(p)
+            continue
+        if p.centroid[0]-p.major_axis_length<0 or p.centroid[0]+p.major_axis_length>mask_nuc.shape[0]:
+            props_large.remove(p)
+            continue
+        if p.centroid[1]-p.major_axis_length<0 or p.centroid[1]+p.major_axis_length>mask_nuc.shape[1]:
+            props_large.remove(p)
+            continue
+        i_clean+=1
+        label_wbc[label_nuc==ip+1]=i_clean
+
+# Merge small neighbouring areas                       
+    po=np.asarray([p.centroid for p in props_large])
+    cent_dist=segmentations.center_diff_matrix(po,metric='euclidean')
+
+
+# TODO: handle 2 thresholds: distance and size
+
+    # merging regions
+    merge_pair_indices=np.argwhere(np.logical_and(cent_dist<2*param.rbcR,cent_dist>0))
+    
+    for mi in merge_pair_indices:
+        if mi[0]<mi[1] and\
+            (props_large[mi[0]].area+props_large[mi[1]].area<2*param.rbcR**2*np.pi*scale**2):
+                label_wbc[label_wbc==mi[0]+1]=label_wbc[label_wbc==mi[1]+1].max()
+
+    prop_wbc=measure.regionprops(label_wbc)
+    
+    # final removal of small elements
+    for p in prop_wbc:
+        if p.area<0.33*param.rbcR**2*np.pi*scale**2:
+            prop_wbc.remove(p)
+            
+    return prop_wbc
 
 def cell_mask(hsv,param,mask=None,scale=1,init_centers='k-means++',vis_diag=False,fig=''):
 # Clustering in sv space - using the init_centers from clustering in smaller image     
@@ -101,5 +150,8 @@ def cell_markers_from_mask(mask_cell,param,scale=1,vis_diag=False,fig=''):
                                         labels=mask_cell.copy())
     #markers, n_RBC = measure.label(local_maxi,return_num=True)
     markers=morphology.binary_dilation(local_maxi>0,morphology.disk(3))
+    
+    label= measure.label(markers, connectivity=markers.ndim)
+    prop=measure.regionprops(label)
   
-    return markers
+    return markers, prop
