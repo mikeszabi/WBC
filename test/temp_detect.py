@@ -25,6 +25,7 @@ from skimage import draw
 from skimage import img_as_ubyte
 from scipy import ndimage
 from matplotlib import pyplot as plt
+from matplotlib.path import Path
 
 # %matplotlib qt5
  
@@ -42,7 +43,7 @@ import time
 plt.ioff()
 
 #image_dir=r'e:\CELLDATA\Slides\1106_kezi_diapH_5_7_12'
-image_dir=r'd:\Projects\WBC\data\Test\WBC Types\Problem'
+image_dir=r'd:\Projects\WBC\data\Test'
 
 included_extenstions = ['*.jpg', '*.bmp', '*.png', '*.gif']
 image_list_indir = []
@@ -53,9 +54,9 @@ for i, image_file in enumerate(image_list_indir):
     print(str(i)+' : '+image_file)
 
 
-image_file=image_list_indir[9]
+image_file=image_list_indir[2]
 
-vis_diag=False
+vis_diag=True
 
 for image_file in image_list_indir:
 
@@ -90,7 +91,7 @@ for image_file in image_list_indir:
     """   
     start_time = time.time()    
  
-    mask_nuc=detections.wbc_nucleus_mask(hsv_resize,diag.param,sat_tsh=diag.sat_q95,scale=scale,vis_diag=False,fig='')
+    mask_nuc=detections.wbc_nucleus_mask(hsv_resize,diag.param,sat_tsh=diag.sat_q95,scale=scale,vis_diag=vis_diag,fig='')
 
     print("--- %s seconds - WBC nucleus mask ---" % (time.time() - start_time))
     """
@@ -115,7 +116,7 @@ for image_file in image_list_indir:
     """
     start_time = time.time()      
     
-    prop_wbc=detections.wbc_regions(mask_nuc,diag.param,scale=scale)
+    prop_wbc=detections.wbc_regions(mask_nuc,diag.param,scale=scale,vis_diag=True)
     
     print("--- %s seconds - CELL markers ---" % (time.time() - start_time))
   
@@ -126,7 +127,7 @@ for image_file in image_list_indir:
     diag.measures['n_WBC']=len(prop_wbc)
     diag.measures['n_RBC']=len(prop_rbc)
     
-    im_rbc=imtools.overlayImage(im_resize,mask_cell,(1,0,0),0.5,vis_diag=vis_diag,fig='sat')    
+    im_rbc=imtools.overlayImage(im_resize,mask_cell,(1,0,0),0.5,vis_diag=False,fig='rbc')    
     im_nuc=imtools.overlayImage(im_rbc,mask_nuc,(0,0,1),0.5,vis_diag=vis_diag,fig='nuc')    
     
 #    fig = plt.figure('detections')
@@ -136,7 +137,7 @@ for image_file in image_list_indir:
 #        cnt = draw.circle_perimeter(int(p.centroid[0]), int(p.centroid[1]), int(p.minor_axis_length))
 #        cnt=(cnt[1][np.linspace(0,len(cnt[1])-1,21,dtype='uint8',endpoint=False)],cnt[0][np.linspace(0,len(cnt[0])-1,21,dtype='uint8',endpoint=False)]) # row,col -> x,y
 #        ax.plot(cnt[0], cnt[1], '.', lw=1)
-#   
+   
 #    diag.saveDiagFigure(fig,'wbc_detections',savedir=diag_dir)
 #    plt.close(fig) 
     
@@ -144,20 +145,34 @@ for image_file in image_list_indir:
     CREATE shapes
     """
  
-    shapelist=[]
-    for p in prop_rbc:
-         pts=[(p.centroid[1]/scale,p.centroid[0]/scale)]
-         one_shape=('RBC','circle',pts,'None','None')
-         shapelist.append(one_shape)
+    shapelist_WBC=[]
     for p in prop_wbc:
-         pts=[(p.centroid[1]/scale+p.major_axis_length*np.cos(theta*2*np.pi/20)/scale,p.centroid[0]/scale+p.major_axis_length*np.sin(theta*2*np.pi/20)/scale) for theta in range(20)] 
+        # centroid is in row,col
+         pts=[(p.centroid[1]/scale+0.75*p.major_axis_length*np.cos(theta*2*np.pi/20)/scale,p.centroid[0]/scale+0.75*p.major_axis_length*np.sin(theta*2*np.pi/20)/scale) for theta in range(20)] 
          #pts=[(p.centroid[1]/scale,p.centroid[0]/scale)]
          one_shape=('WBC','circle',pts,'None','None')
-         shapelist.append(one_shape)
+         shapelist_WBC.append(one_shape)
+         
+    shapelist_RBC=[]
+    for p in prop_rbc:
+        pts=[(p.centroid[1]/scale,p.centroid[0]/scale)]
+        is_in_wbc=False
+        for shape in shapelist_WBC:
+             bb=Path(shape[2])
+             intersect = bb.contains_points(pts)    
+             if intersect.sum()>0:
+                 is_in_wbc=True
+        if not is_in_wbc:
+            one_shape=('RBC','circle',pts,'None','None')
+            shapelist_RBC.append(one_shape)
+    shapelist=shapelist_WBC
+    shapelist.extend(shapelist_RBC)
     # Plot manual
     fig = plt.figure('detections',figsize=(20,20))
     fig=imtools.plotShapes(im,shapelist,color='r',\
-                                   detect_shapes='ALL',text=('WBC'),fig=fig)
+                                   detect_shapes='RBC',text=(''),fig=fig)
+    fig=imtools.plotShapes(im,shapelist,color='b',\
+                                   detect_shapes='WBC',text=('WBC'),fig=fig)
 
     diag.saveDiagFigure(fig,'detections',savedir=diag_dir)
     plt.close(fig) 

@@ -12,6 +12,8 @@ import numpy as np;
 import skimage.io as io
 from skimage import measure
 # %matplotlib qt5
+from matplotlib.path import Path
+
  
 import __init__
 import imtools
@@ -95,21 +97,34 @@ def cell_detector(image_file,save_diag=False,out_dir=''):
     diag.checks()
     if len(diag.error_list)>0:
         print(image_file+' is of wrong quality')
+        diag.writeDiagnostics(diag_dir)
         return []
     
     """
     CREATE shapes
     """
-    shapelist=[]
-    for p in prop_rbc:
-         pts=[(p.centroid[1]/scale,p.centroid[0]/scale)]
-         one_shape=('RBC','circle',pts,'None','None')
-         shapelist.append(one_shape)
+    shapelist_WBC=[]
     for p in prop_wbc:
-         pts=[(p.centroid[1]/scale+p.major_axis_length*np.cos(theta*2*np.pi/20)/scale,p.centroid[0]/scale+p.major_axis_length*np.sin(theta*2*np.pi/20)/scale) for theta in range(20)] 
+        # centroid is in row,col
+         pts=[(p.centroid[1]/scale+0.75*p.major_axis_length*np.cos(theta*2*np.pi/20)/scale,p.centroid[0]/scale+0.75*p.major_axis_length*np.sin(theta*2*np.pi/20)/scale) for theta in range(20)] 
          #pts=[(p.centroid[1]/scale,p.centroid[0]/scale)]
          one_shape=('WBC','circle',pts,'None','None')
-         shapelist.append(one_shape)
+         shapelist_WBC.append(one_shape)
+         
+    shapelist_RBC=[]
+    for p in prop_rbc:
+        pts=[(p.centroid[1]/scale,p.centroid[0]/scale)]
+        is_in_wbc=False
+        for shape in shapelist_WBC:
+             bb=Path(shape[2])
+             intersect = bb.contains_points(pts)    
+             if intersect.sum()>0:
+                 is_in_wbc=True
+        if not is_in_wbc:
+            one_shape=('RBC','circle',pts,'None','None')
+            shapelist_RBC.append(one_shape)
+    shapelist=shapelist_WBC
+    shapelist.extend(shapelist_RBC)
     
     head, tail=os.path.split(image_file)
     xml_file=os.path.join(output_dir,tail.replace('.bmp',''))

@@ -55,20 +55,26 @@ for i, image_file in enumerate(image_list_indir):
     """
     hsv_resize, scale=imtools.imRescaleMaxDim(diag.hsv_corrected,diag.param.middle_size,interpolation = 0)
     im_resize, scale=imtools.imRescaleMaxDim(diag.im_corrected,diag.param.middle_size,interpolation = 0)
-
     """
-    DETECT AND LABEL WBC NUCLEUS
-    """
+    WBC nucleus masks
+    """    
     mask_nuc=detections.wbc_nucleus_mask(hsv_resize,diag.param,sat_tsh=diag.sat_q95,scale=scale,vis_diag=False,fig='')
-    label_nuc = measure.label(mask_nuc, connectivity=mask_nuc.ndim)
-
+   
+    """
+    CREATE WBC REGIONS
+    """    
+    prop_wbc=detections.wbc_regions(mask_nuc,diag.param,scale=scale)
+    
+    """
+    SAVE NUCLEUS MASK
+    """
     mask_file_name=str.replace(image_file,image_dir,mask_dir)
     if not os.path.isdir(os.path.dirname(mask_file_name)):
         os.makedirs(os.path.dirname(mask_file_name))
     io.imsave(mask_file_name,255*mask_nuc)
 
     """
-    CALCULATE NUCLEUS SATURATION
+    PARAMETERS for NORMALIZATION 
     """
     sat=hsv_resize[:,:,1]
     sat=sat[mask_nuc]
@@ -97,26 +103,16 @@ for i, image_file in enumerate(image_list_indir):
     CHECK WBC DETECTIONS
     """
     
-    props = measure.regionprops(label_nuc)
-    props_large=props.copy()
+  
     
-    for p in props:
-        if p.area<0.33*diag.param.rbcR**2*np.pi*scale**2:
-            props_large.remove(p)
-            continue
-        if p.centroid[0]-p.major_axis_length<0 or p.centroid[0]+p.major_axis_length>im_resize.shape[0]:
-            props_large.remove(p)
-            continue
-        if p.centroid[1]-p.major_axis_length<0 or p.centroid[1]+p.major_axis_length>im_resize.shape[1]:
-            props_large.remove(p)
-            continue
-    
-    for p in props_large:
+    for p in prop_wbc:
         is_pos_detect=False
         i_detected+=1
-        o=(int(p.centroid[1]),int(p.centroid[0])) # centroid in row/col, origo in x/y
+        # centroid is in row,col
+        o=(int(p.centroid[0]),int(p.centroid[1])) # centroid in row/col, origo in x/y
         r=int(p.major_axis_length)
-        im_cropped=im_resize[o[1]-r:o[1]+r,o[0]-r:o[0]+r]
+        im_cropped=im_resize[max(o[0]-r,0):min(o[0]+r,im_resize.shape[0]-1),\
+                            max(o[1]-r,0):min(o[1]+r,im_resize.shape[1]-1)]
         wbc_type='fp'
         for each_bb in annotations_bb:
 #            if each_bb[0] in list(wbc_types.keys()):

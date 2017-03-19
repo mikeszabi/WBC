@@ -23,7 +23,7 @@ def wbc_nucleus_mask(hsv,param,scale=1,sat_tsh=100,vis_diag=False,fig=''):
                                             hsv[:,:,1]>sat_tsh) 
     
 # morphological opening to eliminate small detections    
-    mask_nuc=morphology.binary_opening(mask_nuc,morphology.disk(np.round(max(hsv.shape)/256)))
+    mask_nuc=morphology.binary_opening(mask_nuc,morphology.disk(np.round(max(hsv.shape)/200)))
 #    mask_fg=morphology.binary_closing(mask_fg,morphology.disk(np.round(param.middle_size/128)))
     
     return mask_nuc
@@ -43,14 +43,10 @@ def wbc_regions(mask_nuc,param,scale=1,vis_diag=False,fig=''):
         if p.area<0.1*param.rbcR**2*np.pi*scale**2:
             props_large.remove(p)
             continue
-        if p.centroid[0]-p.major_axis_length<0 or p.centroid[0]+p.major_axis_length>mask_nuc.shape[0]:
-            props_large.remove(p)
-            continue
-        if p.centroid[1]-p.major_axis_length<0 or p.centroid[1]+p.major_axis_length>mask_nuc.shape[1]:
-            props_large.remove(p)
-            continue
         i_clean+=1
         label_wbc[label_nuc==ip+1]=i_clean
+                 
+#    props_sorted=sorted(props_large, key=lambda x: x.area)
 
 # Merge small neighbouring areas    
     if len(props_large)>0:                   
@@ -58,23 +54,47 @@ def wbc_regions(mask_nuc,param,scale=1,vis_diag=False,fig=''):
         cent_dist=segmentations.center_diff_matrix(po,metric='euclidean')
     
     
-    # TODO: handle 2 thresholds: distance and size
     
-        # merging regions
-        merge_pair_indices=np.argwhere(np.logical_and(cent_dist<2*param.rbcR,cent_dist>0))
-        
-        for mi in merge_pair_indices:
-            if mi[0]<mi[1] and\
-                (props_large[mi[0]].area+props_large[mi[1]].area<2*param.rbcR**2*np.pi*scale**2):
-                    label_wbc[label_wbc==mi[0]+1]=label_wbc[label_wbc==mi[1]+1].max()
+    areas=[p.area for p in props_large]
+    
+    re_labels=np.linspace(0,len(props_large)-1,len(props_large))
+    
+    # merging regions
+    # TODO: handle 2 thresholds: distance and size
 
-    prop_wbc=measure.regionprops(label_wbc)
+    for i, row in enumerate(cent_dist):
+        row_use=row[i+1:]
+        if len(row_use)>0:
+            m_i=np.argmin(row_use)
+            if row_use[m_i]<3*param.rbcR*scale and\
+               (areas[i]+areas[m_i+i+1]<2*param.rbcR**2*np.pi*scale**2):
+               re_labels[re_labels==re_labels[m_i+i+1]]=re_labels[i]
+               areas[m_i+i+1]+=areas[i]
+ 
+    re_label_wbc=label_wbc.copy()          
+    for i, re_lab in enumerate(re_labels):   
+        re_label_wbc[label_wbc==i+1]=re_lab+1
+        
+#        merge_pair_indices=np.argwhere(np.logical_and(cent_dist<2*param.rbcR,cent_dist>0))
+#        
+#        for mi in merge_pair_indices:
+#            if mi[0]<mi[1] and\
+#                (props_large[mi[0]].area+props_large[mi[1]].area<1.5*param.rbcR**2*np.pi*scale**2):
+#                    label_wbc[label_wbc==mi[0]+1]=label_wbc[label_wbc==mi[1]+1].max()
+
+    prop_wbc=measure.regionprops(re_label_wbc)
+    
+    if vis_diag:
+        fig=plt.figure('wbc nucleus labels',figsize=(7,7))
+        axs=fig.add_subplot(111)
+        axs.imshow(re_label_wbc)  
     
     # final removal of small elements
     for p in prop_wbc:
-        if p.area<0.33*param.rbcR**2*np.pi*scale**2:
+        if p.major_axis_length<0.75*param.rbcR:
             prop_wbc.remove(p)
-            
+        if p.major_axis_length>5*param.rbcR:
+            prop_wbc.remove(p)
     return prop_wbc
 
 def cell_mask(hsv,param,mask=None,scale=1,init_centers='k-means++',vis_diag=False,fig=''):

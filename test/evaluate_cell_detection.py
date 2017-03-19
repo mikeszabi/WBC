@@ -30,10 +30,13 @@ print(imDirs)
 # SELECT subdir
 i_imDirs=0
 
-output_dir=param.getOutDir(dir_name='output')
 diag_dir=param.getOutDir(dir_name='diag')
 
+
 image_dir=param.getImageDirs(data_dir=data_dir,dir_name=imDirs[i_imDirs])
+
+output_dir=os.path.join(param.getOutDir(dir_name='output'),imDirs[i_imDirs])
+
 
 included_extenstions = ['*.jpg', '*.bmp', '*.png', '*.gif']
 image_list_indir = []

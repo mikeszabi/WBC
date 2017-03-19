@@ -6,9 +6,11 @@ This is a temporary script file.
 """
 
 import __init__
+import csv
 import os
-import skimage.io as io
+import collections
 import sys
+import skimage.io as io
 import matplotlib.pyplot as plt
 from matplotlib.path import Path
 import argparse
@@ -72,9 +74,16 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
             bb=each_bb[2]
             if min((im.shape[1],im.shape[0])-np.average(bb,axis=0))<25 or min(np.average(bb,axis=0))<25:
                 annotations_bb.remove(each_bb)
+        """
+        REMOVE ANNOTATIONS CLOSE TO BORDER
+        """
+        for each_bb in shapelist:
+            bb=each_bb[2]
+            if min((im.shape[1],im.shape[0])-np.average(bb,axis=0))<25 or min(np.average(bb,axis=0))<25:
+                shapelist.remove(each_bb)
 # TODO: add 25 as parameter
     
-        if save_diag:
+        if save_diag and (shapelist):
             fig = plt.figure('detections',figsize=(20,20),dpi=300)
             # Plot manual
             fig=imtools.plotShapes(im,annotations_bb,color='b',\
@@ -96,16 +105,24 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
         
         if (shapelist) and (annotations_bb):       
             
-            n_wbc=0
+            wbc_stat={}
+            wbc_stat['wbc_annotated']=0
+            for types in wbc_types.keys():
+                wbc_stat[types]=0
+            wbc_stat['wbc_detected']=0
+            wbc_stat['wbc_matched']=0
+                    
+                    
             for each_bb in annotations_bb:
                 if each_bb[0] in list(wbc_types.keys()):
-                    n_wbc+=1
+                    wbc_stat['wbc_annotated']+=1
+                    for types in wbc_types.keys():
+                        if each_bb[0]==types:
+                            wbc_stat[types]+=1
                     
-            n_wbc_detected=0
-            n_wbc_matched=0
             for each_shape in shapelist:
                 if each_shape[0]=='WBC':
-                    n_wbc_detected+=1;
+                    wbc_stat['wbc_detected']+=1;
                     for each_bb in annotations_bb:
                         if each_bb[0] in list(wbc_types.keys()):
                             bb=Path(each_bb[2])
@@ -113,33 +130,36 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
                             intersect = bb.contains_points(center_point)    
                             if intersect.sum()>0:
                                 p_over=intersect.sum()/len(center_point)
-                                n_wbc_matched+=p_over
+                                wbc_stat['wbc_matched']+=p_over
                                 annotations_bb.remove(each_bb)
                                 break
                             
-            detect_stat.append((image_file,n_wbc,n_wbc_detected,n_wbc_matched))    
- 
-    n_images=len(image_list_indir)
-    n_wbc=[]
-    n_wbc_detected=[]
-    n_wbc_matched=[]    
-    for stats in detect_stat:
-        n_wbc.append(stats[1])
-        n_wbc_detected.append(stats[2])
-        n_wbc_matched.append(stats[3])
+            detect_stat.append((image_file,wbc_stat))    
+
+    """
+    AGGREGATE STATISTICS
+    """ 
         
-    print('images in dir:'+str(n_images))
-    print('images with manual and automatic annotations:'+str(len(detect_stat)))
-    print('n wbc total:'+str(sum(n_wbc)))
-    print('n wbc detected total:'+str(sum(n_wbc_detected)))
-    print('n wbc matched total:'+str(sum(n_wbc_matched)))
+    # initialize to zero
+    wbc_total_stat={}
+    wbc_total_stat['wbc_images']=len(image_list_indir)
+    wbc_total_stat['wbc_images_ok']=len(detect_stat)
+    if (detect_stat):
+        for keys, values in detect_stat[0][1].items():
+            wbc_total_stat[keys]=0
+                       
+    for stats in detect_stat:
+        for keys, values in stats[1].items():
+            wbc_total_stat[keys]+=values
+                
+    od = collections.OrderedDict(sorted(wbc_total_stat.items()))    
+    for keys, values in od.items():
+        print(keys+'\t: ',+values)
     if save_diag:
-        with open(os.path.join(output_dir,'eval_stats.txt'), 'w') as eval_file:
-            eval_file.write('images in dir:         {0:.0f}\n'.format(n_images))
-            eval_file.write('images with manual and automatic annotations: {0:.0f}\n'.format(len(detect_stat)))
-            eval_file.write('n wbc total:           {0:.0f}\n'.format(sum(n_wbc)))
-            eval_file.write('n wbc detected total:  {0:.0f}\n'.format(sum(n_wbc_detected)))
-            eval_file.write('n wbc matched total:   {0:.0f}\n'.format(sum(n_wbc_matched)))
+        with open(os.path.join(output_dir,'eval_stats.txt'), 'wt',newline='') as f:
+            w = csv.DictWriter(f, delimiter=':', fieldnames=['measures','values'])
+            for keys, values in od.items():
+                w.writerow({'measures' : keys, 'values' : values})
 
 if __name__=='__main__':
     # Initialize argument parse object
