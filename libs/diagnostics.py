@@ -34,6 +34,7 @@ class diagnostics:
         self.vis_diag=vis_diag
         self.image_file=image_file
         self.image_shape=(im.shape[0],im.shape[1])
+        self.do_overexpo_mask=False
         self.do_illimination_corection=False
         self.do_blob_detection=False
         self.nRBC=0
@@ -44,9 +45,14 @@ class diagnostics:
             l_dim=2 # luminosity dimension in hsv           
             self.hsv_small, scale = imtools.imRescaleMaxDim(self.hsv, self.param.small_size, interpolation=0)            
         
-        intensity_im=self.hsv[:,:,l_dim]            
-        # Calculate overexposition mask
-        self.mask_over=self.overMask(intensity_im)            
+        self.mask_over=np.zeros(self.hsv.shape[0:2])
+        if self.do_overexpo_mask:
+            # Calculate overexposition mask
+            intensity_im=self.hsv[:,:,l_dim]  
+            self.mask_over=self.overMask(intensity_im)            
+            if self.mask_over.sum()>0 and vis_diag:
+                imtools.maskOverlay(im,self.mask_over,0.5,vis_diag=self.vis_diag,fig='overexposition mask')
+            
         # Estimate inhomogen illumination
         self.cent_init, \
         self.bckg_pct, \
@@ -54,10 +60,7 @@ class diagnostics:
         self.hsv_corrected, \
         self.im_corrected=self.illumination_correction(do=self.do_illimination_corection)
         
-        if self.mask_over.sum()>0 and vis_diag:
-            imtools.maskOverlay(im,self.mask_over,0.5,vis_diag=self.vis_diag,fig='overexposition mask')
-        
-        self.measures={}
+        # Calculate histogram measures
         self.imhists=imtools.colorHist(im,mask=255-self.mask_over,vis_diag=False,fig='rgb')
         self.hsvhists=imtools.colorHist(self.hsv,mask=255-self.mask_over,vis_diag=False,fig='hsv')
         
@@ -89,7 +92,7 @@ class diagnostics:
                                             threshold=0.5*self.siqr_rgb[self.ch_maxvar]/255, vis_diag=vis_diag)   
         
         # fill up initial measures
-                                                                          
+        self.measures={}                                                                  
         self.measures['siqr_rgb']=self.siqr_rgb
         self.measures['siqr_hsv']=self.siqr_hsv
         self.measures['ch_maxvar']=self.ch_maxvar # channel with maximal variability
@@ -104,7 +107,8 @@ class diagnostics:
         self.measures['bckg_inhomogenity_pct']=bckg_inhomogenity_pct
         self.measures['bckg_pct']=self.bckg_pct
         self.measures['rbcR']=self.param.rbcR
-        
+        self.measures['n_WBC']=np.NaN
+        self.measures['n_RBC']=np.NaN
         self.error_list=[]
         #self.checks()
 

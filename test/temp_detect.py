@@ -39,8 +39,6 @@ import annotations
 from scipy import ndimage
 import time
 
-%matplotlib qt5
-plt.ioff()
 
 #image_dir=r'e:\CELLDATA\Slides\1106_kezi_diapH_5_7_12'
 image_dir=r'd:\Projects\WBC\data\Test'
@@ -57,6 +55,12 @@ for i, image_file in enumerate(image_list_indir):
 image_file=image_list_indir[2]
 
 vis_diag=True
+if vis_diag==True:
+    plt.ion()
+    %matplotlib qt5
+else:
+    plt.ioff()
+
 
 for image_file in image_list_indir:
 
@@ -86,44 +90,44 @@ for image_file in image_list_indir:
     """    
     hsv_resize, scale=imtools.imRescaleMaxDim(diag.hsv_corrected,diag.param.middle_size,interpolation = 0)
     im_resize, scale=imtools.imRescaleMaxDim(diag.im_corrected,diag.param.middle_size,interpolation = 0)
+    
     """
-    WBC nucleus masks
+    WBC detection
     """   
     start_time = time.time()    
  
     mask_nuc=detections.wbc_nucleus_mask(hsv_resize,diag.param,sat_tsh=diag.sat_q95,scale=scale,vis_diag=vis_diag,fig='')
 
     print("--- %s seconds - WBC nucleus mask ---" % (time.time() - start_time))
+    
+    #CREATE WBC REGIONS
+    
+    start_time = time.time()      
+    
+    prop_wbc=detections.wbc_regions(mask_nuc,diag.param,scale=scale,vis_diag=True)
+    
+    print("--- %s seconds - CELL markers ---" % (time.time() - start_time))
+   
     """
-    CELL FOREGORUND MASK
+    CELL DETECTION
     """
+    # CELL FOREGORUND MASK
     start_time = time.time() 
     
     mask_cell=detections.cell_mask(hsv_resize,diag.param,scale=scale,mask=mask_nuc,init_centers=diag.cent_init,vis_diag=vis_diag,fig='cell_mask')
     
     print("--- %s seconds - CELL mask ---" % (time.time() - start_time))
 
-    """
-    CELL MARKERS AnD REGIONS
-    """
+    # RBC MARKERS and REGIONS
     start_time = time.time()  
     
     markers_rbc, prop_rbc=detections.cell_markers_from_mask(mask_cell,diag.param,scale=scale,vis_diag=vis_diag,fig='cell_markers')         
 
     print("--- %s seconds - CELL markers ---" % (time.time() - start_time))
-    """
-    CREATE WBC REGIONS
-    """
-    start_time = time.time()      
     
-    prop_wbc=detections.wbc_regions(mask_nuc,diag.param,scale=scale,vis_diag=True)
-    
-    print("--- %s seconds - CELL markers ---" % (time.time() - start_time))
-  
     """
-    CREATE RBC REGIONS
-    """    
-    
+    COUNTING
+    """
     diag.measures['n_WBC']=len(prop_wbc)
     diag.measures['n_RBC']=len(prop_rbc)
     
@@ -140,6 +144,13 @@ for image_file in image_list_indir:
    
 #    diag.saveDiagFigure(fig,'wbc_detections',savedir=diag_dir)
 #    plt.close(fig) 
+
+    """
+    PARAMETERS for WBC NORMALIZATION 
+    """
+    pixs=im_resize[mask_nuc,]
+    diag.measures['nucleus_median_rgb']=np.median(pixs,axis=0)
+
     
     """
     CREATE shapes
