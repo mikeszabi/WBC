@@ -49,7 +49,7 @@ def wbc_regions(mask_nuc,param,scale=1,vis_diag=False,fig=''):
 #    props_sorted=sorted(props_large, key=lambda x: x.area)
 
 # Merge small neighbouring areas    
-     if len(props_large)>0:                   
+    if len(props_large)>0:                   
         po=np.asarray([p.centroid for p in props_large])
         cent_dist=segmentations.center_diff_matrix(po,metric='euclidean')
       
