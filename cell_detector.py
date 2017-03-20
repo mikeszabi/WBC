@@ -70,6 +70,11 @@ def cell_detector(image_file,save_diag=False,out_dir=''):
     """    
     mask_nuc=detections.wbc_nucleus_mask(hsv_resize,diag.param,sat_tsh=diag.sat_q95,scale=scale,vis_diag=False,fig='')
     """
+    CREATE WBC REGIONS
+    """    
+    prop_wbc=detections.wbc_regions(mask_nuc,diag.param,scale=scale)
+  
+    """
     CELL FOREGORUND MASK
     """    
     mask_cell=detections.cell_mask(hsv_resize,diag.param,scale=scale,mask=mask_nuc,init_centers=diag.cent_init,vis_diag=vis_diag,fig='cell_mask')
@@ -78,17 +83,18 @@ def cell_detector(image_file,save_diag=False,out_dir=''):
     CELL MARKERS AnD REGIONS
     """    
     markers_rbc, prop_rbc=detections.cell_markers_from_mask(mask_cell,diag.param,scale=scale,vis_diag=vis_diag,fig='cell_markers')         
+   
     """
-    CREATE WBC REGIONS
-    """    
-    prop_wbc=detections.wbc_regions(mask_nuc,diag.param,scale=scale)
-      
+    COUNTING
     """
-    CREATE RBC REGIONS
-    """    
-    
     diag.measures['n_WBC']=len(prop_wbc)
     diag.measures['n_RBC']=len(prop_rbc)
+    
+    """
+    PARAMETERS for WBC NORMALIZATION 
+    """
+    pixs=im_resize[mask_nuc,]
+    diag.measures['nucleus_median_rgb']=np.median(pixs,axis=0)
     
    
     """
