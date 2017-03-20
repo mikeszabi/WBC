@@ -49,38 +49,32 @@ def wbc_regions(mask_nuc,param,scale=1,vis_diag=False,fig=''):
 #    props_sorted=sorted(props_large, key=lambda x: x.area)
 
 # Merge small neighbouring areas    
-    if len(props_large)>0:                   
+     if len(props_large)>0:                   
         po=np.asarray([p.centroid for p in props_large])
         cent_dist=segmentations.center_diff_matrix(po,metric='euclidean')
-    
-    
-    
-    areas=[p.area for p in props_large]
-    
-    re_labels=np.linspace(0,len(props_large)-1,len(props_large))
-    
-    # merging regions
-    # TODO: handle 2 thresholds: distance and size
-
-    for i, row in enumerate(cent_dist):
-        row_use=row[i+1:]
-        if len(row_use)>0:
-            m_i=np.argmin(row_use)
-            if row_use[m_i]<3*param.rbcR*scale and\
-               (areas[i]+areas[m_i+i+1]<2*param.rbcR**2*np.pi*scale**2):
-               re_labels[re_labels==re_labels[m_i+i+1]]=re_labels[i]
-               areas[m_i+i+1]+=areas[i]
- 
-    re_label_wbc=label_wbc.copy()          
-    for i, re_lab in enumerate(re_labels):   
-        re_label_wbc[label_wbc==i+1]=re_lab+1
+      
+        areas=[p.area for p in props_large]
         
-#        merge_pair_indices=np.argwhere(np.logical_and(cent_dist<2*param.rbcR,cent_dist>0))
-#        
-#        for mi in merge_pair_indices:
-#            if mi[0]<mi[1] and\
-#                (props_large[mi[0]].area+props_large[mi[1]].area<1.5*param.rbcR**2*np.pi*scale**2):
-#                    label_wbc[label_wbc==mi[0]+1]=label_wbc[label_wbc==mi[1]+1].max()
+        re_labels=np.linspace(0,len(props_large)-1,len(props_large))
+        
+        # merging regions
+        # TODO: handle 2 thresholds: distance and size
+    
+        for i, row in enumerate(cent_dist):
+            row_use=row[i+1:]
+            if len(row_use)>0:
+                m_i=np.argmin(row_use)
+                if row_use[m_i]<3*param.rbcR*scale and\
+                   (areas[i]+areas[m_i+i+1]<2*param.rbcR**2*np.pi*scale**2):
+                   re_labels[re_labels==re_labels[m_i+i+1]]=re_labels[i]
+                   areas[m_i+i+1]+=areas[i]
+     
+        re_label_wbc=label_wbc.copy()          
+        for i, re_lab in enumerate(re_labels):   
+            re_label_wbc[label_wbc==i+1]=re_lab+1
+                        
+    else:
+        re_label_wbc=label_wbc
 
     prop_wbc=measure.regionprops(re_label_wbc)
     
