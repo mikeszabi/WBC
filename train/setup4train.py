@@ -18,15 +18,14 @@ from collections import Counter
 import random
 import math
 import os
-import numpy as np
 
 import cfg
 
 param=cfg.param()
-
-data_dir=r'C:\Users\SzMike\OneDrive\WBC\DATA'
-image_dir=os.path.join(data_dir,'Detected_Cropped')
-train_dir=os.path.join(data_dir,'Training')
+user='mikeszabi'
+output_base_dir=os.path.join(r'C:\Users',user,'OneDrive\WBC\DATA')
+image_dir=os.path.join(output_base_dir,'Detected_Cropped')
+train_dir=os.path.join(output_base_dir,'Training')
 train_image_list_file=os.path.join(train_dir,'images_train.csv')
 test_image_list_file=os.path.join(train_dir,'images_test.csv')
 image_data=os.path.join(image_dir,'detections.csv')

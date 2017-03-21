@@ -15,8 +15,8 @@ Created on Thu Dec 22 13:29:36 2016
 # https://github.com/Microsoft/CNTK/blob/v2.0.beta6.0/Tutorials/CNTK_201A_CIFAR-10_DataLoader.ipynb
 
 import __init__
-from collections import Counter
 
+import warnings
 import pandas as pd
 import numpy as np
 import os
@@ -24,8 +24,8 @@ import xml.etree.cElementTree as et
 import xml.dom.minidom
 import csv
 import skimage.io as io
-
-import imtools
+from skimage.transform import resize
+from skimage import img_as_ubyte
 
 #%matplotlib inline
 
@@ -39,10 +39,10 @@ num_classes  = 6
 label_base=np.zeros(num_classes)
 
 # Paths for saving the text files
-
-data_dir=r'C:\Users\SzMike\OneDrive\WBC\DATA'
-image_dir=os.path.join(data_dir,'Detected_Cropped')
-train_dir=os.path.join(data_dir,'Training')
+user='mikeszabi'
+output_base_dir=os.path.join(r'C:\Users',user,'OneDrive\WBC\DATA')
+image_dir=os.path.join(output_base_dir,'Detected_Cropped')
+train_dir=os.path.join(output_base_dir,'Training')
 
 train_image_list_file=os.path.join(train_dir,'images_train.csv')
 test_image_list_file=os.path.join(train_dir,'images_test.csv')
@@ -132,7 +132,9 @@ def saveTrainImages(filename, image_dir, train_dir):
 # create data sequence RRR GGG BBB
                 fname = os.path.join(image_dir,row['image'])
                 im = io.imread(fname)
-                data,scale=imtools.imRescaleMaxDim(im,imgSize, boUpscale = True, interpolation = 0)
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    data = img_as_ubyte(resize(im, (imgSize,imgSize), order=1))
                 fname = os.path.join(train_dir,'Train',os.path.basename(row['image'])) # .decode('utf-8')  -solves unicode problem
                 data=np.transpose(data, (2, 0, 1)) # CHW format.
                 saveImage(fname, data, label, mapFile, regrFile, 0, mean=dataMean)

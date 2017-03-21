@@ -21,11 +21,12 @@ from cntk import Trainer
 from cntk.learner import momentum_sgd, learning_rate_schedule, UnitType, momentum_as_time_constant_schedule
 from cntk.utils import *
 
+user='mikeszabi'
+output_base_dir=os.path.join(r'C:\Users',user,'OneDrive\WBC\DATA')
+image_dir=os.path.join(output_base_dir,'Detected_Cropped')
+train_dir=os.path.join(output_base_dir,'Training')
 
-data_dir=r'C:\Users\SzMike\OneDrive\WBC\DATA'
-image_dir=os.path.join(data_dir,'Detected_Cropped')
-
-train_dir=os.path.join(data_dir,'Training')
+train_dir=os.path.join(output_base_dir,'Training')
 train_image_list_file=os.path.join(train_dir,'images_train.csv')
 test_image_list_file=os.path.join(train_dir,'images_test.csv')
 
