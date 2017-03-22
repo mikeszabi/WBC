@@ -5,17 +5,18 @@ Created on Tue Mar 14 22:55:49 2017
 @author: SzMike
 """
 
-
-import __init__
+import warnings
 import pandas as pd
 import os
 import numpy as np
 import skimage.io as io
-from PIL import Image
+from skimage.transform import resize
+from skimage import img_as_ubyte
 
+from cntk import load_model
 
+import __init__
 import cfg
-import imtools
 
 #test_minibatch_size = 1000
 #
@@ -43,11 +44,18 @@ num_classes  = 6
 
 param=cfg.param()
 
-data_dir=r'C:\Users\SzMike\OneDrive\WBC\DATA'
-image_dir=os.path.join(data_dir,'Detected_Cropped')
 
-#image_data=os.path.join(image_dir,'detections.csv')
-image_data=os.path.join(data_dir,'Training','images_test.csv')
+user='mikeszabi'
+output_base_dir=os.path.join(r'C:\Users',user,'OneDrive\WBC\DATA')
+image_dir=os.path.join(output_base_dir,'Detected_Cropped')
+train_dir=os.path.join(output_base_dir,'Training')
+train_image_list_file=os.path.join(train_dir,'images_train.csv')
+model_file=os.path.join(train_dir,'cnn_model.dnn')
+
+
+# LOAD MODEL
+pred=load_model(model_file)
+
 
 image_mean   = 128
 
@@ -55,7 +63,7 @@ image_mean   = 128
 def keysWithValue(aDict, target):
     return sorted(key for key, value in aDict.items() if target == value)
 
-df = pd.read_csv(image_data,delimiter=';')
+df = pd.read_csv(train_image_list_file,delimiter=';')
 samples = {}
 contingency_table=np.zeros((num_classes,num_classes))
 for i, im_name in enumerate(df['image']):
@@ -71,7 +79,9 @@ for i, im_name in enumerate(df['image']):
     if wbc_type==[]:
         wbc_type='0'
     im=io.imread(image_file)
-    data,scale=imtools.imRescaleMaxDim(im,imgSize, boUpscale = True, interpolation = 0)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        data = img_as_ubyte(resize(im, (imgSize,imgSize), order=1))
     rgb_image=data.astype('float32')
     rgb_image  -= image_mean
     bgr_image = rgb_image[..., [2, 1, 0]]

@@ -21,42 +21,45 @@ import os
 
 import cfg
 
-param=cfg.param()
-user='mikeszabi'
-output_base_dir=os.path.join(r'C:\Users',user,'OneDrive\WBC\DATA')
-image_dir=os.path.join(output_base_dir,'Detected_Cropped')
-train_dir=os.path.join(output_base_dir,'Training')
-train_image_list_file=os.path.join(train_dir,'images_train.csv')
-test_image_list_file=os.path.join(train_dir,'images_test.csv')
-image_data=os.path.join(image_dir,'detections.csv')
-
-
-trainRatio=0.7
-
 
 def keysWithValue(aDict, target):
     return sorted(key for key, value in aDict.items() if target == value)
 
-reader =csv.DictReader(open(image_data, 'rt'), delimiter=';')
+# SETTING PARAMETERS and DIRS
+
+param=cfg.param()
+trainRatio=0.75
+
+
+user='mikeszabi'
+output_base_dir=os.path.join(r'C:\Users',user,'OneDrive\WBC\DATA')
+
+image_dirs=[os.path.join(output_base_dir,'Detected_Cropped'),os.path.join(output_base_dir,'Detected_Cropped_20170301')]
+
+train_dir=os.path.join(output_base_dir,'Training')
+train_image_list_file=os.path.join(train_dir,'images_train.csv')
+test_image_list_file=os.path.join(train_dir,'images_test.csv')
+
+# COUNTING TYPES
 samples = {}
-
-for row in reader:
-    wbc_type='0'
-    for bt in param.wbc_basic_types:
-        if bt in row['wbc']:
-            wbc_type=param.wbc_basic_types[bt]
-            break
-    samples[row['crop']]=wbc_type
-
+for image_dir in image_dirs:
+    image_data=os.path.join(image_dir,'detections.csv')
+    reader =csv.DictReader(open(image_data, 'rt'), delimiter=';')
+    for row in reader:
+        wbc_type='0'
+        for bt in param.wbc_basic_types:
+            if bt in row['wbc']:
+                wbc_type=param.wbc_basic_types[bt]
+                break
+        samples[os.path.join(image_dir,row['crop'])]=wbc_type
 
 sampleCount=Counter(samples.values())
-# remove prods with less than 10 occurencies
+
+# CREATE TEST AND TRAIN LIST USING RANDOM SPLIT
 i=0
 testProds = {}
 trainProds = {}
 
-# TODO: enrichment?
-min_count=200
 for cat, count in sampleCount.items():
     catProds=keysWithValue(samples,cat)
     random.shuffle(catProds)

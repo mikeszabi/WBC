@@ -10,35 +10,27 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-from cntk.blocks import default_options
 #from cntk.device import gpu, set_default_device
-from cntk.ops import cross_entropy_with_softmax, classification_error, relu, input_variable, softmax, combine, times, element_times, AVG_POOLING
-from cntk.layers import Convolution, MaxPooling, AveragePooling, Dropout, BatchNormalization, Dense
-from cntk.models import Sequential, LayerStack
-from cntk.io import MinibatchSource, ImageDeserializer, StreamDef, StreamDefs
-from cntk.initializer import glorot_uniform, he_normal
+from cntk.ops import cross_entropy_with_softmax, classification_error, relu, input_variable, softmax, element_times
+from cntk.layers import Convolution, MaxPooling, Dropout, Dense
+from cntk.io import MinibatchSource, ImageDeserializer, StreamDef, StreamDefs, transforms
+from cntk.initializer import glorot_uniform
 from cntk import Trainer
 from cntk.learner import momentum_sgd, learning_rate_schedule, UnitType, momentum_as_time_constant_schedule
-from cntk.utils import *
+from cntk.utils import log_number_of_parameters, ProgressPrinter
 
 user='mikeszabi'
 output_base_dir=os.path.join(r'C:\Users',user,'OneDrive\WBC\DATA')
-image_dir=os.path.join(output_base_dir,'Detected_Cropped')
 train_dir=os.path.join(output_base_dir,'Training')
 
-train_dir=os.path.join(output_base_dir,'Training')
-train_image_list_file=os.path.join(train_dir,'images_train.csv')
-test_image_list_file=os.path.join(train_dir,'images_test.csv')
+model_file=os.path.join(train_dir,'cnn_model.dnn')
 
 #train_filename = os.path.join(train_dir,'Train_cntk_text.txt')
 #test_filename = os.path.join(train_dir,'Test_cntk_text.txt')
 #train_regr_labels=os.path.join(train_dir,'train_regrLabels.txt')
 
-train_img_directory = os.path.join(train_dir,'/Train')
-test_img_directory = os.path.join(train_dir,'/Test')
-
-train_map=os.path.join(train_dir,'train_map.txt')
-test_map=os.path.join(train_dir,'test_map.txt')
+train_map=os.path.join(train_dir,'train_map_e750.txt')
+test_map=os.path.join(train_dir,'test_map_e250.txt')
 # GET train and test map from prepare4train
 
 data_mean_file=os.path.join(train_dir,'data_mean.xml')
@@ -52,8 +44,8 @@ num_classes  = 6
 
 def create_basic_model(input, out_dims):
     
-    convolutional_layer_1  = Convolution((5,5), 16, init=glorot_uniform(), activation=relu, pad=True)(input)
-    pooling_layer_1  = MaxPooling((2,2), strides=(2,2))(convolutional_layer_1 )
+    convolutional_layer_1  = Convolution((5,5), 32, init=glorot_uniform(), activation=relu, pad=True)(input)
+    pooling_layer_1  = MaxPooling((3,3), strides=(2,2))(convolutional_layer_1 )
 
 #    convolutional_layer_2 = Convolution((5,5), 64, init=glorot_uniform(), activation=relu, pad=True)(pooling_layer_1)
 #    pooling_layer_2 = MaxPooling((3,3), strides=(2,2))(convolutional_layer_2)
@@ -61,45 +53,12 @@ def create_basic_model(input, out_dims):
 #    net = Convolution((5,5), 128, init=glorot_uniform(), activation=relu, pad=True)(net)
 #    net = MaxPooling((3,3), strides=(2,2))(net)
     
-    fully_connected_layer  = Dense(32, init=glorot_uniform())(pooling_layer_1)
+    fully_connected_layer  = Dense(64, init=glorot_uniform())(pooling_layer_1)
     dropout_layer = Dropout(0.25)(fully_connected_layer)
 
     output_layer = Dense(out_dims, init=glorot_uniform(), activation=None)(dropout_layer)
     
     return output_layer
-
-def create_basic_model_with_dropout(input, out_dims):
-
-    with default_options(activation=relu):
-        model = Sequential([
-            LayerStack(2, lambda i: [
-                Convolution((5,5), [16,16][i], init=glorot_uniform(), pad=True),
-                BatchNormalization(map_rank=1),
-                MaxPooling((3,3), strides=(2,2))
-            ]),
-            Dense(32, init=glorot_uniform()),
-            Dropout(0.25),
-            Dense(out_dims, init=glorot_uniform(), activation=None)
-        ])
-
-    return model(input)
- 
-def create_basic_model_with_batch_normalization(input, out_dims):
-
-    with default_options(activation=relu):
-        model = Sequential([
-            LayerStack(2, lambda i: [
-                Convolution((5,5), [5,5,16][i], init=glorot_uniform(), pad=True),
-                BatchNormalization(map_rank=1),
-                MaxPooling((3,3), strides=(2,2))
-            ]),
-            Dense(64, init=glorot_uniform()),
-            BatchNormalization(map_rank=1),
-            Dense(out_dims, init=glorot_uniform(), activation=None)
-        ])
-
-    return model(input)
-  
 
 #
 # Define the reader for both training and evaluation action.
@@ -107,18 +66,18 @@ def create_basic_model_with_batch_normalization(input, out_dims):
 def create_reader(map_file, mean_file, train):
   
     # transformation pipeline for the features has jitter/crop only when training
-    transforms = []
+    trs = []
 #    if train:
 #        transforms += [
 #            ImageDeserializer.crop(crop_type='Random', ratio=0.8, jitter_type='uniRatio') # train uses jitter
 #        ]
-    transforms += [
-        ImageDeserializer.scale(width=image_width, height=image_height, channels=num_channels, interpolations='linear'),
-        ImageDeserializer.mean(mean_file)
+    trs += [
+        transforms.scale(width=image_width, height=image_height, channels=num_channels, interpolations='linear'),
+        transforms.mean(mean_file)
     ]
     # deserializer
     return MinibatchSource(ImageDeserializer(map_file, StreamDefs(
-        features = StreamDef(field='image', transforms=transforms), # first column in map file is referred to as 'image'
+        features = StreamDef(field='image', transforms=trs), # first column in map file is referred to as 'image'
         labels   = StreamDef(field='label', shape=num_classes)      # and second as 'label'
     )))
     
@@ -146,8 +105,8 @@ def train_and_evaluate(reader_train, reader_test, max_epochs, model_func):
     pe = classification_error(z, label_var)
 
     # training config
-    epoch_size     = 1050
-    minibatch_size = 16
+    epoch_size     = 4500
+    minibatch_size = 32
 
     # Set training parameters
     lr_per_minibatch       = learning_rate_schedule([0.01]*10 + [0.003]*10 + [0.001],  UnitType.minibatch, epoch_size)
@@ -155,10 +114,12 @@ def train_and_evaluate(reader_train, reader_test, max_epochs, model_func):
     l2_reg_weight          = 0.001
     
     # trainer object
+    progress_printer = ProgressPrinter(0)
+
     learner     = momentum_sgd(z.parameters, 
                                lr = lr_per_minibatch, momentum = momentum_time_constant, 
                                l2_regularization_weight=l2_reg_weight)
-    trainer     = Trainer(z, ce, pe, [learner])
+    trainer     = Trainer(z, (ce, pe), [learner], [progress_printer])
 
     # define mapping from reader streams to network inputs
     input_map = {
@@ -167,7 +128,7 @@ def train_and_evaluate(reader_train, reader_test, max_epochs, model_func):
     }
 
     log_number_of_parameters(z) ; print()
-    progress_printer = ProgressPrinter(tag='Training')
+    #progress_printer = ProgressPrinter(tag='Training')
 
     # perform model training
     batch_index = 0
@@ -192,7 +153,7 @@ def train_and_evaluate(reader_train, reader_test, max_epochs, model_func):
     #
     # Evaluation action
     #
-    epoch_size     = 450
+    epoch_size     = 1500
     minibatch_size = 16
 
     # process minibatches and evaluate the model
@@ -257,3 +218,5 @@ reader_test  = create_reader(test_map, data_mean_file, False)
 
 pred = train_and_evaluate(reader_train, reader_test, max_epochs=500, model_func=create_basic_model)
 #pred_batch= train_and_evaluate(reader_train, reader_test, max_epochs=10, model_func=create_basic_model_with_batch_normalization)
+
+pred.save_model(model_file)

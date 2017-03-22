@@ -41,14 +41,13 @@ label_base=np.zeros(num_classes)
 # Paths for saving the text files
 user='mikeszabi'
 output_base_dir=os.path.join(r'C:\Users',user,'OneDrive\WBC\DATA')
-image_dir=os.path.join(output_base_dir,'Detected_Cropped')
 train_dir=os.path.join(output_base_dir,'Training')
 
 train_image_list_file=os.path.join(train_dir,'images_train.csv')
 test_image_list_file=os.path.join(train_dir,'images_test.csv')
 
-train_img_directory = os.path.join(train_dir,'Train')
-test_img_directory = os.path.join(train_dir,'Test')
+#train_img_directory = os.path.join(train_dir,'Train')
+#test_img_directory = os.path.join(train_dir,'Test')
 
 train_map_o=os.path.join(train_dir,'train_map.txt')
 test_map_o=os.path.join(train_dir,'test_map.txt')
@@ -85,9 +84,9 @@ def saveImage(fname, pixData, label, mapFile, regrFile, pad, **key_parms):
     if pad > 0:
         pixData = np.pad(pixData, ((0, 0), (pad, pad), (pad, pad)), mode='constant', constant_values=128) 
 
-    data=np.transpose(pixData, (1, 2, 0))
-   
-    io.imsave(fname,data)
+#    data=np.transpose(pixData, (1, 2, 0))  
+#    io.imsave(fname,data)
+ 
     mapFile.write("%s\t%d\n" % (fname, label))
     
     # compute per channel mean and store for regression example
@@ -111,9 +110,9 @@ def saveMean(fname, data):
     with open(fname, 'w') as f:
         f.write(x.toprettyxml(indent = '  '))
 
-def saveTrainImages(filename, image_dir, train_dir):
-    if not os.path.exists(os.path.join(train_dir,'Train')):
-        os.makedirs(os.path.join(train_dir,'Train'))
+def saveTrainImages(filename, train_dir):
+#    if not os.path.exists(os.path.join(train_dir,'Train')):
+#        os.makedirs(os.path.join(train_dir,'Train'))
     data = {}
     dataMean = np.zeros((3, imgSize, imgSize)) # mean is in CHW format.
     
@@ -130,12 +129,12 @@ def saveTrainImages(filename, image_dir, train_dir):
                 prods[row['image']]=row['category']
 # read image file
 # create data sequence RRR GGG BBB
-                fname = os.path.join(image_dir,row['image'])
+                fname = row['image']
                 im = io.imread(fname)
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     data = img_as_ubyte(resize(im, (imgSize,imgSize), order=1))
-                fname = os.path.join(train_dir,'Train',os.path.basename(row['image'])) # .decode('utf-8')  -solves unicode problem
+                #fname = os.path.join(train_dir,'Train',os.path.basename(row['image'])) # .decode('utf-8')  -solves unicode problem
                 data=np.transpose(data, (2, 0, 1)) # CHW format.
                 saveImage(fname, data, label, mapFile, regrFile, 0, mean=dataMean)
 
@@ -143,9 +142,9 @@ def saveTrainImages(filename, image_dir, train_dir):
     dataMean = 128*np.ones((3, imgSize, imgSize))
     saveMean(os.path.join(train_dir,'data_mean.xml'), dataMean)
 
-def saveTestImages(filename, image_dir, train_dir):
-    if not os.path.exists(os.path.join(train_dir,'Test')):
-        os.makedirs(os.path.join(train_dir,'Test'))
+def saveTestImages(filename, train_dir):
+#    if not os.path.exists(os.path.join(train_dir,'Test')):
+#        os.makedirs(os.path.join(train_dir,'Test'))
         
     # Szabi code
     reader =csv.DictReader(open(filename, 'rt'), delimiter=';')
@@ -158,21 +157,23 @@ def saveTestImages(filename, image_dir, train_dir):
 # read image file
 # create data sequence RRR GGG BBB
 
-                fname = os.path.join(image_dir,row['image'])
+                fname = row['image']
                 im = io.imread(fname)                  
-                data,scale=imtools.imRescaleMaxDim(im,imgSize, boUpscale = True, interpolation = 0)
-                fname = os.path.join(train_dir,'Test',os.path.basename(row['image'])) # .decode('utf-8')  -solves unicode problem
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    data = img_as_ubyte(resize(im, (imgSize,imgSize), order=1))
+                #fname = os.path.join(train_dir,'Test',os.path.basename(row['image'])) # .decode('utf-8')  -solves unicode problem
                 data=np.transpose(data, (2, 0, 1)) # CHW format.
                 saveImage(fname, data, int(row['category']), mapFile, regrFile, 0)
 
 
 print ('Converting train data to png images...')
-saveTrainImages(train_image_list_file, image_dir,train_dir)
+saveTrainImages(train_image_list_file,train_dir)
 print ('Done.')
 print ('Converting test data to png images...')
-saveTestImages(test_image_list_file, image_dir,train_dir)
+saveTestImages(test_image_list_file,train_dir)
 print ('Done.')
 
 # enrich!
-train_map=enrichMap(train_map_o,max_count=210)
-test_map=enrichMap(test_map_o,max_count=90)
+train_map=enrichMap(train_map_o,max_count=750)
+test_map=enrichMap(test_map_o,max_count=250)
