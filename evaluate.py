@@ -11,6 +11,7 @@ import os
 import collections
 import sys
 import skimage.io as io
+io.use_plugin('pil') # Use only the capability of PIL
 import matplotlib.pyplot as plt
 from matplotlib.path import Path
 import argparse
@@ -90,7 +91,7 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
                                    detect_shapes=list(wbc_types.keys()),text='ALL',fig=fig)
             # Plot automatic
             fig=imtools.plotShapes(im,shapelist,color='r',\
-                                   detect_shapes='ALL',text=('WBC'),fig=fig)
+                                   detect_shapes='ALL',text=list(param.wbc_basic_types.keys()),fig=fig)
             head, tail = str.split(os.path.abspath(xml_file_2),'.')
             detect_image_file=os.path.join(head+'_annotations.jpg')
             fig.savefig(detect_image_file,dpi=300)
@@ -121,7 +122,7 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
                             wbc_stat[types]+=1
                     
             for each_shape in shapelist:
-                if each_shape[0]=='WBC':
+                if each_shape[0] in list(param.wbc_basic_types.keys()):
                     wbc_stat['wbc_detected']+=1;
                     for each_bb in annotations_bb:
                         if each_bb[0] in list(wbc_types.keys()):

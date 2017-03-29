@@ -8,13 +8,16 @@ import __init__
 
 
 import os
+import glob
 import warnings
 import time
 import skimage.io as io
-import numpy as np;
+io.use_plugin('pil') # Use only the capability of PIL
+
+import numpy as np
+from scipy import ndimage
 from skimage.transform import resize
 from skimage import filters
-import glob
 from skimage import morphology
 from skimage import feature
 from skimage import measure
@@ -34,14 +37,13 @@ import imtools
 import diagnostics
 import segmentations
 import detections
-
+import classifications
 import annotations
-from scipy import ndimage
+
 import time
 
-
 #image_dir=r'e:\CELLDATA\Slides\1106_kezi_diapH_5_7_12'
-image_dir=r'd:\Projects\WBC\data\Test'
+image_dir=os.path.join(os.path.curdir,'data','Test')
 
 included_extenstions = ['*.jpg', '*.bmp', '*.png', '*.gif']
 image_list_indir = []
@@ -52,7 +54,7 @@ for i, image_file in enumerate(image_list_indir):
     print(str(i)+' : '+image_file)
 
 
-image_file=image_list_indir[2]
+image_file=image_list_indir[17]
 
 vis_diag=True
 if vis_diag==True:
@@ -61,6 +63,7 @@ if vis_diag==True:
 else:
     plt.ioff()
 
+cnn=classifications.cnn_classification()
 
 for image_file in image_list_indir:
 
@@ -132,7 +135,7 @@ for image_file in image_list_indir:
     diag.measures['n_RBC']=len(prop_rbc)
     
     im_rbc=imtools.overlayImage(im_resize,mask_cell,(1,0,0),0.5,vis_diag=False,fig='rbc')    
-    im_nuc=imtools.overlayImage(im_rbc,mask_nuc,(0,0,1),0.5,vis_diag=vis_diag,fig='nuc')    
+    im_nuc=imtools.overlayImage(im_rbc,mask_nuc,(0,0,1),0.5,vis_diag=vis_diag,fig='nuc+rbc')    
     
 #    fig = plt.figure('detections')
 #    ax = fig.add_subplot(111)
@@ -153,7 +156,7 @@ for image_file in image_list_indir:
 
     
     """
-    CREATE shapes
+    CREATE shapes AND classify WBC 
     """
  
     shapelist_WBC=[]
@@ -161,7 +164,19 @@ for image_file in image_list_indir:
         # centroid is in row,col
          pts=[(p.centroid[1]/scale+0.75*p.major_axis_length*np.cos(theta*2*np.pi/20)/scale,p.centroid[0]/scale+0.75*p.major_axis_length*np.sin(theta*2*np.pi/20)/scale) for theta in range(20)] 
          #pts=[(p.centroid[1]/scale,p.centroid[0]/scale)]
-         one_shape=('WBC','circle',pts,'None','None')
+         one_shape=('un','circle',pts,'None','None')
+         
+         # WBC classification
+         
+         im_cropped,mask_cropped,o,r=classifications.crop_shape(im_resize,mask_nuc,one_shape,\
+                                                            diag.param.rgb_norm,diag.measures['nucleus_median_rgb'],\
+                                                            scale=scale,adjust=True)
+         if im_cropped is not None:
+             # do the actual classification
+             wbc_label, pct=cnn.classify(im_cropped)
+             # redefiniton of wbc type
+             one_shape=(wbc_label[0],'circle',pts,'None','None')
+             
          shapelist_WBC.append(one_shape)
          
     shapelist_RBC=[]
@@ -183,7 +198,8 @@ for image_file in image_list_indir:
     fig=imtools.plotShapes(im,shapelist,color='r',\
                                    detect_shapes='RBC',text=(''),fig=fig)
     fig=imtools.plotShapes(im,shapelist,color='b',\
-                                   detect_shapes='WBC',text=('WBC'),fig=fig)
+                                   detect_shapes=list(diag.param.wbc_basic_types.keys()),\
+                                                     text=list(diag.param.wbc_basic_types.keys()),fig=fig)
 
     diag.saveDiagFigure(fig,'detections',savedir=diag_dir)
     plt.close(fig) 

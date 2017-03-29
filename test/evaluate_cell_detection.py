@@ -9,8 +9,9 @@ import os
 import glob
 import cfg
 
+import classifications
 
-import cell_detector
+import cell_classifier
 import evaluate
 
 
@@ -31,10 +32,7 @@ print(imDirs)
 i_imDirs=0
 
 diag_dir=param.getOutDir(dir_name='diag')
-
-
 image_dir=param.getImageDirs(data_dir=data_dir,dir_name=imDirs[i_imDirs])
-
 output_dir=os.path.join(param.getOutDir(dir_name='output'),imDirs[i_imDirs])
 
 
@@ -51,6 +49,8 @@ image_file=image_list_indir[15]
 
 detect_stat=[]
 
+cnn=classifications.cnn_classification()
+
 for image_file in image_list_indir:
     # reading image
     
@@ -59,7 +59,7 @@ for image_file in image_list_indir:
     """
     RUN automatic detection
     """
-    shapelist=cell_detector.cell_detector(image_file,save_diag=True,out_dir=imDirs[i_imDirs])
+    shapelist=cell_classifier.cell_classifier(image_file,cnn=cnn,save_diag=True,out_dir=imDirs[i_imDirs])
     
 """
 EVALUATION of DETECTION

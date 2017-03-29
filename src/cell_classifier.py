@@ -11,19 +11,18 @@ import argparse
 import numpy as np;
 import skimage.io as io
 io.use_plugin('pil') # Use only the capability of PIL
-from skimage import measure
 # %matplotlib qt5
 from matplotlib.path import Path
 
  
-import __init__
 import imtools
 import diagnostics
 import detections
 import annotations
+import classifications 
 
 
-def batch_cell_detector(image_dir,save_diag=False,out_dir=''): 
+def batch_cell_classifier(image_dir,cnn=None,save_diag=False,out_dir=''): 
     
     if not os.path.exists(image_dir):
         print('directory does not exists')
@@ -34,9 +33,9 @@ def batch_cell_detector(image_dir,save_diag=False,out_dir=''):
         
     for image_file in image_list_indir:    
         print(image_file)
-        cell_detector(image_file,save_diag,out_dir=out_dir)
+        cell_classifier(image_file,cnn=cnn,save_diag=save_diag,out_dir=out_dir)
 
-def cell_detector(image_file,save_diag=False,out_dir=''): 
+def cell_classifier(image_file,cnn=None,save_diag=False,out_dir=''): 
     
     vis_diag=False
     
@@ -116,6 +115,18 @@ def cell_detector(image_file,save_diag=False,out_dir=''):
          pts=[(p.centroid[1]/scale+0.75*p.major_axis_length*np.cos(theta*2*np.pi/20)/scale,p.centroid[0]/scale+0.75*p.major_axis_length*np.sin(theta*2*np.pi/20)/scale) for theta in range(20)] 
          #pts=[(p.centroid[1]/scale,p.centroid[0]/scale)]
          one_shape=('un','circle',pts,'None','None')
+         
+         # WBC classification
+         
+         im_cropped,mask_cropped,o,r=classifications.crop_shape(im_resize,mask_nuc,one_shape,\
+                                                            diag.param.rgb_norm,diag.measures['nucleus_median_rgb'],\
+                                                            scale=scale,adjust=True)
+         if (im_cropped is not None) and (cnn is not None):
+             # do the actual classification
+             wbc_label, pct=cnn.classify(im_cropped)
+             # redefiniton of wbc type
+             one_shape=(wbc_label[0],'circle',pts,'None','None')
+             
          shapelist_WBC.append(one_shape)
          
     shapelist_RBC=[]
@@ -176,15 +187,18 @@ if __name__=='__main__':
     parser.add_argument('-o', action='store', dest='o', type=str, required=False,
                     default='')
 
+# create classfier
+    cnn=classifications.cnn_classification()
+
 # Parse the arguments
     inargs = parser.parse_args()
     path_str = os.path.abspath(inargs.i)
     
     if inargs.b is None:
         print('Single image process')
-        cell_detector(path_str,save_diag=inargs.s,out_dir=inargs.o)
+        cell_classifier(path_str,cnn=cnn,save_diag=inargs.s,out_dir=inargs.o)
     else:
         print('Batch execution')
-        batch_cell_detector(path_str,save_diag=inargs.s,out_dir=inargs.o)    
+        batch_cell_classifier(path_str,cnn=cnn,save_diag=inargs.s,out_dir=inargs.o)    
     sys.exit(1)
   

@@ -8,6 +8,7 @@ Created on Tue Mar 14 09:59:53 2017
 import __init__
 import os
 import skimage.io as io
+io.use_plugin('pil') # Use only the capability of PIL
 from matplotlib.path import Path
 import numpy as np
 import matplotlib.pyplot as plt

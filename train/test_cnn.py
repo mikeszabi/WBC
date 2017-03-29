@@ -10,6 +10,7 @@ import pandas as pd
 import os
 import numpy as np
 import skimage.io as io
+io.use_plugin('pil') # Use only the capability of PIL
 from skimage.transform import resize
 from skimage import img_as_ubyte
 
