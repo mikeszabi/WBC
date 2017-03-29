@@ -4,7 +4,6 @@ Created on Wed Feb  1 22:13:20 2017
 
 @author: SzMike
 """
-import __init__
 import os
 import glob
 import cfg

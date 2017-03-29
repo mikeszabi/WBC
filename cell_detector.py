@@ -11,12 +11,10 @@ import argparse
 import numpy as np;
 import skimage.io as io
 io.use_plugin('pil') # Use only the capability of PIL
-from skimage import measure
 # %matplotlib qt5
 from matplotlib.path import Path
 
  
-import __init__
 import imtools
 import diagnostics
 import detections

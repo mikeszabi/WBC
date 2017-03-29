@@ -16,7 +16,6 @@ from skimage import img_as_ubyte
 
 from cntk import load_model
 
-import __init__
 import cfg
 
 #test_minibatch_size = 1000

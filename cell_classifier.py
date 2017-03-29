@@ -15,7 +15,6 @@ io.use_plugin('pil') # Use only the capability of PIL
 from matplotlib.path import Path
 
  
-import __init__
 import imtools
 import diagnostics
 import detections

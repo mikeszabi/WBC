@@ -5,7 +5,6 @@ Spyder Editor
 This is a temporary script file.
 """
 
-import __init__
 import csv
 import os
 import collections

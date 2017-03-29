@@ -5,7 +5,6 @@ Created on Sun Mar  5 15:02:17 2017
 @author: SzMike
 """
 
-import __init__
 import os
 import skimage.io as io
 io.use_plugin('pil') # Use only the capability of PIL
@@ -18,7 +17,6 @@ from csv import DictWriter
 
 import annotations
 import diagnostics
-import imtools
 
 
 included_extenstions = ['*.jpg', '*.bmp', '*.png', '*.gif']

@@ -5,7 +5,6 @@ Created on Tue Mar 14 09:59:53 2017
 @author: SzMike
 """
 
-import __init__
 import os
 import skimage.io as io
 io.use_plugin('pil') # Use only the capability of PIL

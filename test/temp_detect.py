@@ -4,8 +4,6 @@ Created on Thu Feb 23 11:46:42 2017
 
 @author: SzMike
 """
-import __init__
-
 
 import os
 import glob

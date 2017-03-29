@@ -12,7 +12,6 @@ Created on Wed Dec 21 13:18:47 2016
 @author: SzMike
 """
 
-import __init__
 import csv
 from collections import Counter
 import random
