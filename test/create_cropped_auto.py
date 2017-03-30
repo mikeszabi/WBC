@@ -22,7 +22,7 @@ import detections
 import classifications
 
 #user='SzMike'
-user='Szabolcs'
+user='mikeszabi'
 output_base_dir=os.path.join(r'C:\Users',user,'OneDrive\WBC\DATA')
 image_dir=os.path.join(output_base_dir,'Annotated_20170301')
 output_dir=os.path.join(output_base_dir,'Detected_Cropped_20170301')
@@ -92,7 +92,7 @@ for i, image_file in enumerate(image_list_indir):
     if os.path.isfile(xml_file_1):
         try:
             xmlReader = annotations.AnnotationReader(xml_file_1)
-            annotations_bb=xmlReader.getone_shape()
+            annotations_bb=xmlReader.getShapes()
         except:
             annotations_bb=[]
             continue
@@ -109,7 +109,7 @@ for i, image_file in enumerate(image_list_indir):
         # centroid is in row,col
          pts=[(p.centroid[1]/scale+0.75*p.major_axis_length*np.cos(theta*2*np.pi/20)/scale,p.centroid[0]/scale+0.75*p.major_axis_length*np.sin(theta*2*np.pi/20)/scale) for theta in range(20)] 
          #pts=[(p.centroid[1]/scale,p.centroid[0]/scale)]
-         one_shape=('WBC','circle',pts,'None','None')
+         one_shape=('un','circle',pts,'None','None')
          shapelist_WBC.append(one_shape)    
      
     for one_shape in shapelist_WBC:
