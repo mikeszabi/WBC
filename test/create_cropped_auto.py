@@ -122,7 +122,7 @@ for i, image_file in enumerate(image_list_indir):
     
         if im_cropped is not None:
             
-            wbc_type='fp'
+            wbc_type='un'
             for each_bb in annotations_bb:
     #            if each_bb[0] in list(wbc_types.keys()):
                     # only if in wbc list to be detected
@@ -133,7 +133,7 @@ for i, image_file in enumerate(image_list_indir):
                     is_pos_detect=True   
                     wbc_type=each_bb[0]
                     if wbc_type not in list(wbc_types.keys()):
-                        wbc_type='fp' # false positive
+                        wbc_type='un' # unknown
                         break
             
            

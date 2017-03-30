@@ -22,7 +22,7 @@ class param:
         self.rgb_range_in_hue=((-30/360,30/360), (75/360,135/360), (180/360,240/360))
         #self.wbc_range_in_hue=(230/360,260/360)
         self.wbc_range_in_hue=(200/360,265/360)
-        self.rgb_norm=(50,50,100)
+        self.rgb_norm=(60,60,120)
         #self.hueWidth=2
         self.project='WBC'
         self.root_dir=os.curdir

@@ -38,12 +38,15 @@ def crop_shape(im,mask,one_shape,rgb_norm,med_rgb,scale=1,adjust=True):
 #            pixs=im_cropped[mask_cropped>0,]
 #            nuc_med_rgb=np.median(pixs,axis=0)
             # global to image
-            gamma=np.zeros(3)
-            gain=np.zeros(3)
-            for ch in range(3):
-                gamma[ch]=np.log(255-rgb_norm[ch])/np.log(255-med_rgb[ch])
-                gain[ch]=rgb_norm[ch]/np.power(med_rgb[ch],gamma[ch])
-            im_cropped=exposure.adjust_gamma(im_cropped,np.mean(gamma),np.mean(gain))
+#            gamma=np.zeros(3)
+#            gain=np.zeros(3)
+#            for ch in range(3):
+#                gamma[ch]=np.log(255-rgb_norm[ch])/np.log(255-med_rgb[ch])
+#                gain[ch]=rgb_norm[ch]/np.power(med_rgb[ch],gamma[ch])
+# gamma and gain ONLY FOR BLUE CHANNEL
+            gamma=np.log(255-rgb_norm[2])/np.log(255-med_rgb[2])
+            gain=min(255/im_cropped.max(),rgb_norm[2]/np.power(med_rgb[2],gamma))
+            im_cropped=exposure.adjust_gamma(im_cropped,gamma=np.mean(gamma),gain=np.mean(gain))
    
     else:
         im_cropped=None
