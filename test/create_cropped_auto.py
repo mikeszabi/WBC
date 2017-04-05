@@ -24,8 +24,8 @@ import classifications
 #user='SzMike'
 user='mikeszabi'
 output_base_dir=os.path.join(r'C:\Users',user,'OneDrive\WBC\DATA')
-image_dir=os.path.join(output_base_dir,'Annotated_20170301')
-output_dir=os.path.join(output_base_dir,'Detected_Cropped_20170301')
+image_dir=os.path.join(output_base_dir,'Annotated_20170320')
+output_dir=os.path.join(output_base_dir,'Detected_Cropped_20170320')
 #mask_dir=os.path.join(output_base_dir,'Mask')
 
 #image_dir=r'd:\Projects\WBC\data\Test'
