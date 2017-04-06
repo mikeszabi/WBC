@@ -45,11 +45,11 @@ num_classes  = 6
 param=cfg.param()
 
 
-user='mikeszabi'
+user='picturio'
 output_base_dir=os.path.join(r'C:\Users',user,'OneDrive\WBC\DATA')
 image_dir=os.path.join(output_base_dir,'Detected_Cropped')
 train_dir=os.path.join(output_base_dir,'Training')
-train_image_list_file=os.path.join(train_dir,'images_train.csv')
+image_list_file=os.path.join(train_dir,'images_test.csv')
 model_file=os.path.join(train_dir,'cnn_model.dnn')
 
 
@@ -63,7 +63,7 @@ image_mean   = 128
 def keysWithValue(aDict, target):
     return sorted(key for key, value in aDict.items() if target == value)
 
-df = pd.read_csv(train_image_list_file,delimiter=';')
+df = pd.read_csv(image_list_file,delimiter=';')
 samples = {}
 contingency_table=np.zeros((num_classes,num_classes))
 for i, im_name in enumerate(df['image']):

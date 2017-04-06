@@ -38,7 +38,7 @@ num_classes  = 6
 label_base=np.zeros(num_classes)
 
 # Paths for saving the text files
-user='mikeszabi'
+user='picturio'
 output_base_dir=os.path.join(r'C:\Users',user,'OneDrive\WBC\DATA')
 train_dir=os.path.join(output_base_dir,'Training')
 
@@ -174,5 +174,5 @@ saveTestImages(test_image_list_file,train_dir)
 print ('Done.')
 
 # enrich!
-train_map=enrichMap(train_map_o,max_count=750)
-test_map=enrichMap(test_map_o,max_count=250)
+#train_map=enrichMap(train_map_o,max_count=750)
+#test_map=enrichMap(test_map_o,max_count=250)
