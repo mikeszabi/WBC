@@ -9,8 +9,9 @@ skimage_plugins = Tree(
 
 block_cipher = None
 
+
 a = Analysis(['cell_classifier.py'],
-             pathex=['c:\\Users\\mikeszabi\\Documents\\Projects\\WBC'],
+             pathex=['d:\\Projects\\WBC'],
              binaries=[],
              datas=[],
              hiddenimports=['cython', 'sklearn', 'sklearn.neighbors.typedefs'],
