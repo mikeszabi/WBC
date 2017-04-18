@@ -7,7 +7,7 @@ Created on Wed Feb  1 22:13:20 2017
 import os
 import glob
 import cfg
-
+import logging
 import classifications
 
 import cell_classifier
@@ -44,7 +44,7 @@ for i, image_file in enumerate(image_list_indir):
     print(str(i)+' : '+image_file)
 
 # SELECT a TEST file
-image_file=image_list_indir[15]
+image_file=image_list_indir[13]
 
 detect_stat=[]
 
@@ -59,6 +59,8 @@ for image_file in image_list_indir:
     RUN automatic detection
     """
     shapelist=cell_classifier.cell_classifier(image_file,cnn=cnn,save_diag=True,out_dir=imDirs[i_imDirs])
+
+logging.shutdown()
     
 """
 EVALUATION of DETECTION

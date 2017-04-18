@@ -149,8 +149,9 @@ for image_file in image_list_indir:
     """
     PARAMETERS for WBC NORMALIZATION 
     """
-    pixs=im_resize[mask_nuc,]
-    diag.measures['nucleus_median_rgb']=np.median(pixs,axis=0)
+    if mask_nuc.sum()>0:
+        pixs=im_resize[mask_nuc,]
+        diag.measures['nucleus_median_rgb']=np.median(pixs,axis=0)        
 
     
     """

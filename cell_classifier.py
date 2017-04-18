@@ -7,6 +7,7 @@ Created on Tue Feb 14 09:21:59 2017
 import os
 import sys
 import argparse
+import logging
 
 import numpy as np;
 import skimage.io as io
@@ -21,20 +22,26 @@ import detections
 import annotations
 import classifications 
 
+# Logging setup
+log_file='progress.log'
+logging.basicConfig(filename=log_file,level=logging.DEBUG)
 
 def batch_cell_classifier(image_dir,cnn=None,save_diag=False,out_dir=''): 
     
+    
     if not os.path.exists(image_dir):
-        print('directory does not exists')
+        logging.info('directory does not exists')
         return
     
     image_list_indir=imtools.imagelist_in_depth(image_dir,level=1)
-    print('processing '+str(len(image_list_indir))+' images')
+    logging.info('processing '+str(len(image_list_indir))+' images')
         
     for image_file in image_list_indir:    
-        print(image_file)
+        logging.info(image_file)
         cell_classifier(image_file,cnn=cnn,save_diag=save_diag,out_dir=out_dir)
-
+    
+    logging.info('DONE')
+    
 def cell_classifier(image_file,cnn=None,save_diag=False,out_dir=''): 
     
     vis_diag=False
@@ -43,10 +50,10 @@ def cell_classifier(image_file,cnn=None,save_diag=False,out_dir=''):
     try:
         im = io.imread(image_file) # read uint8 image
     except Exception:
-        print(image_file+' does not exist')
+        logging.info(image_file+' does not exist')
         return []
     if im.ndim!=3:
-        print('not color image')
+        logging.info('not color image')
         return []    
    
     """
@@ -102,7 +109,7 @@ def cell_classifier(image_file,cnn=None,save_diag=False,out_dir=''):
     """
     diag.checks()
     if len(diag.error_list)>0:
-        print(image_file+' is of wrong quality')
+        logging.info(image_file+' is of wrong quality')
         diag.writeDiagnostics(diag_dir)
         return []
     
@@ -193,12 +200,16 @@ if __name__=='__main__':
 # Parse the arguments
     inargs = parser.parse_args()
     path_str = os.path.abspath(inargs.i)
-    
+   
     if inargs.b is None:
-        print('Single image process')
+        logging.info('Single image process')
         cell_classifier(path_str,cnn=cnn,save_diag=inargs.s,out_dir=inargs.o)
     else:
-        print('Batch execution')
+        logging.info('Batch execution')
         batch_cell_classifier(path_str,cnn=cnn,save_diag=inargs.s,out_dir=inargs.o)    
+    
+    # deleting log file
+    logging.shutdown()
+    os.remove(log_file)
     sys.exit(1)
   
