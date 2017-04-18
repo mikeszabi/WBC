@@ -30,10 +30,12 @@ param=cfg.param()
 trainRatio=0.75
 
 
-user='mikeszabi'
+user='picturio'
 output_base_dir=os.path.join(r'C:\Users',user,'OneDrive\WBC\DATA')
 
-image_dirs=[os.path.join(output_base_dir,'Detected_Cropped'),os.path.join(output_base_dir,'Detected_Cropped_20170301')]
+image_dirs=[os.path.join(output_base_dir,'Detected_Cropped'),\
+            os.path.join(output_base_dir,'Detected_Cropped_20170320'),\
+            os.path.join(output_base_dir,'Detected_Cropped_20170301')]
 
 train_dir=os.path.join(output_base_dir,'Training')
 train_image_list_file=os.path.join(train_dir,'images_train.csv')

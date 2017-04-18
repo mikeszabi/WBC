@@ -19,7 +19,7 @@ from cntk import Trainer
 from cntk.learner import momentum_sgd, learning_rate_schedule, UnitType, momentum_as_time_constant_schedule
 from cntk.utils import log_number_of_parameters, ProgressPrinter
 
-user='mikeszabi'
+user='picturio'
 output_base_dir=os.path.join(r'C:\Users',user,'OneDrive\WBC\DATA')
 train_dir=os.path.join(output_base_dir,'Training')
 
@@ -29,8 +29,8 @@ model_file=os.path.join(train_dir,'cnn_model.dnn')
 #test_filename = os.path.join(train_dir,'Test_cntk_text.txt')
 #train_regr_labels=os.path.join(train_dir,'train_regrLabels.txt')
 
-train_map=os.path.join(train_dir,'train_map_e750.txt')
-test_map=os.path.join(train_dir,'test_map_e250.txt')
+train_map=os.path.join(train_dir,'train_map.txt')
+test_map=os.path.join(train_dir,'test_map.txt')
 # GET train and test map from prepare4train
 
 data_mean_file=os.path.join(train_dir,'data_mean.xml')
@@ -44,17 +44,17 @@ num_classes  = 6
 
 def create_basic_model(input, out_dims):
     
-    convolutional_layer_1  = Convolution((5,5), 32, init=glorot_uniform(), activation=relu, pad=True)(input)
+    convolutional_layer_1  = Convolution((3,3), 32, init=glorot_uniform(), activation=relu, pad=True)(input)
     pooling_layer_1  = MaxPooling((3,3), strides=(2,2))(convolutional_layer_1 )
 
-#    convolutional_layer_2 = Convolution((5,5), 64, init=glorot_uniform(), activation=relu, pad=True)(pooling_layer_1)
-#    pooling_layer_2 = MaxPooling((3,3), strides=(2,2))(convolutional_layer_2)
+    convolutional_layer_2 = Convolution((5,5), 16, init=glorot_uniform(), activation=relu, pad=True)(pooling_layer_1)
+    pooling_layer_2 = MaxPooling((5,5), strides=(2,2))(convolutional_layer_2)
 #
 #    net = Convolution((5,5), 128, init=glorot_uniform(), activation=relu, pad=True)(net)
 #    net = MaxPooling((3,3), strides=(2,2))(net)
     
-    fully_connected_layer  = Dense(64, init=glorot_uniform())(pooling_layer_1)
-    dropout_layer = Dropout(0.25)(fully_connected_layer)
+    fully_connected_layer  = Dense(64, init=glorot_uniform())(pooling_layer_2)
+    dropout_layer = Dropout(0.5)(fully_connected_layer)
 
     output_layer = Dense(out_dims, init=glorot_uniform(), activation=None)(dropout_layer)
     
@@ -105,7 +105,7 @@ def train_and_evaluate(reader_train, reader_test, max_epochs, model_func):
     pe = classification_error(z, label_var)
 
     # training config
-    epoch_size     = 4500
+    epoch_size     = 5000
     minibatch_size = 32
 
     # Set training parameters
@@ -216,7 +216,7 @@ def train_and_evaluate(reader_train, reader_test, max_epochs, model_func):
 reader_train = create_reader(train_map, data_mean_file, True)
 reader_test  = create_reader(test_map, data_mean_file, False)
 
-pred = train_and_evaluate(reader_train, reader_test, max_epochs=500, model_func=create_basic_model)
+pred = train_and_evaluate(reader_train, reader_test, max_epochs=2000, model_func=create_basic_model)
 #pred_batch= train_and_evaluate(reader_train, reader_test, max_epochs=10, model_func=create_basic_model_with_batch_normalization)
 
 pred.save_model(model_file)
