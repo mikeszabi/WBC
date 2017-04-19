@@ -92,10 +92,10 @@ def cell_detector(image_file,save_diag=False,out_dir=''):
     """
     PARAMETERS for WBC NORMALIZATION 
     """
-    pixs=im_resize[mask_nuc,]
-    diag.measures['nucleus_median_rgb']=np.median(pixs,axis=0)
-    
-   
+    if mask_nuc.sum()>0:
+        pixs=im_resize[mask_nuc,]
+        diag.measures['nucleus_median_rgb']=np.median(pixs,axis=0)
+     
     """
     CHECK ERRORS
     """

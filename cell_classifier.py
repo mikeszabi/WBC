@@ -100,10 +100,10 @@ def cell_classifier(image_file,cnn=None,save_diag=False,out_dir=''):
     """
     PARAMETERS for WBC NORMALIZATION 
     """
-    pixs=im_resize[mask_nuc,]
-    diag.measures['nucleus_median_rgb']=np.median(pixs,axis=0)
-    
-   
+    if mask_nuc.sum()>0:
+        pixs=im_resize[mask_nuc,]
+        diag.measures['nucleus_median_rgb']=np.median(pixs,axis=0)
+       
     """
     CHECK ERRORS
     """
@@ -181,6 +181,9 @@ def cell_classifier(image_file,cnn=None,save_diag=False,out_dir=''):
     return shapelist
 
 if __name__=='__main__':
+    
+    logging.info('STARTING')
+    
 # Initialize argument parse object
     parser = argparse.ArgumentParser()
 
@@ -209,6 +212,7 @@ if __name__=='__main__':
         batch_cell_classifier(path_str,cnn=cnn,save_diag=inargs.s,out_dir=inargs.o)    
     
     # deleting log file
+    logging.info('FINISHING')
     logging.shutdown()
     os.remove(log_file)
     sys.exit(1)
