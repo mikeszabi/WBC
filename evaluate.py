@@ -26,7 +26,7 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
 
     param=cfg.param()
     wbc_types=param.wbc_types
-
+    wbc_basic_types=param.wbc_basic_types
 
     image_list_indir=imtools.imagelist_in_depth(image_dir,level=1)
     print('processing '+str(len(image_list_indir))+' images')
@@ -90,7 +90,7 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
                                    detect_shapes=list(wbc_types.keys()),text='ALL',fig=fig)
             # Plot automatic
             fig=imtools.plotShapes(im,shapelist,color='r',\
-                                   detect_shapes='ALL',text=list(param.wbc_basic_types.keys()),fig=fig)
+                                   detect_shapes='ALL',text=list(wbc_basic_types.keys()),fig=fig)
             head, tail = str.split(os.path.abspath(xml_file_2),'.')
             detect_image_file=os.path.join(head+'_annotations.jpg')
             fig.savefig(detect_image_file,dpi=300)
@@ -108,9 +108,12 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
             wbc_stat={}
             wbc_stat['wbc_annotated']=0
             for types in wbc_types.keys():
-                wbc_stat[types]=0
+                wbc_stat['annotated_'+types]=0
+            for types in wbc_basic_types.keys():
+                wbc_stat['detected_'+types]=0
             wbc_stat['wbc_detected']=0
             wbc_stat['wbc_matched']=0
+            wbc_stat['wbc_type_matched']=0
                     
                     
             for each_bb in annotations_bb:
@@ -118,11 +121,14 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
                     wbc_stat['wbc_annotated']+=1
                     for types in wbc_types.keys():
                         if each_bb[0]==types:
-                            wbc_stat[types]+=1
+                            wbc_stat['annotated_'+types]+=1
                     
             for each_shape in shapelist:
-                if each_shape[0] in list(param.wbc_basic_types.keys()):
+                if each_shape[0] in list(wbc_basic_types.keys()):
                     wbc_stat['wbc_detected']+=1;
+                    for types in list(wbc_basic_types.keys()):
+                        if each_shape[0]==types:
+                            wbc_stat['detected_'+types]+=1
                     for each_bb in annotations_bb:
                         if each_bb[0] in list(wbc_types.keys()):
                             bb=Path(each_bb[2])
@@ -131,6 +137,8 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
                             if intersect.sum()>0:
                                 p_over=intersect.sum()/len(center_point)
                                 wbc_stat['wbc_matched']+=p_over
+                                if each_bb[0]==each_shape[0]:
+                                     wbc_stat['wbc_type_matched']+=p_over
                                 annotations_bb.remove(each_bb)
                                 break
                             
@@ -156,7 +164,7 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
     for keys, values in od.items():
         print(keys+'\t: ',+values)
     if save_diag:
-        with open(os.path.join(output_dir,'eval_stats.txt'), 'wt',newline='') as f:
+        with open(os.path.join(output_dir,'eval_stats_'+os.path.basename(image_dir)+'.txt'), 'wt',newline='') as f:
             w = csv.DictWriter(f, delimiter=':', fieldnames=['measures','values'])
             for keys, values in od.items():
                 w.writerow({'measures' : keys, 'values' : values})
