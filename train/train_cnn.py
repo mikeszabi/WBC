@@ -44,16 +44,16 @@ num_classes  = 6
 
 def create_basic_model(input, out_dims):
     
-    convolutional_layer_1  = Convolution((3,3), 32, init=glorot_uniform(), activation=relu, pad=True)(input)
+    convolutional_layer_1  = Convolution((5,5), 32, init=glorot_uniform(), activation=relu, pad=True)(input)
     pooling_layer_1  = MaxPooling((3,3), strides=(2,2))(convolutional_layer_1 )
 
-    convolutional_layer_2 = Convolution((5,5), 16, init=glorot_uniform(), activation=relu, pad=True)(pooling_layer_1)
-    pooling_layer_2 = MaxPooling((5,5), strides=(2,2))(convolutional_layer_2)
+    convolutional_layer_2 = Convolution((7,7), 32, init=glorot_uniform(), activation=relu, pad=True)(pooling_layer_1)
+    pooling_layer_2 = MaxPooling((3,3), strides=(2,2))(convolutional_layer_2)
 #
 #    net = Convolution((5,5), 128, init=glorot_uniform(), activation=relu, pad=True)(net)
 #    net = MaxPooling((3,3), strides=(2,2))(net)
     
-    fully_connected_layer  = Dense(64, init=glorot_uniform())(pooling_layer_2)
+    fully_connected_layer  = Dense(128, init=glorot_uniform())(pooling_layer_2)
     dropout_layer = Dropout(0.5)(fully_connected_layer)
 
     output_layer = Dense(out_dims, init=glorot_uniform(), activation=None)(dropout_layer)
@@ -216,7 +216,7 @@ def train_and_evaluate(reader_train, reader_test, max_epochs, model_func):
 reader_train = create_reader(train_map, data_mean_file, True)
 reader_test  = create_reader(test_map, data_mean_file, False)
 
-pred = train_and_evaluate(reader_train, reader_test, max_epochs=2000, model_func=create_basic_model)
+pred = train_and_evaluate(reader_train, reader_test, max_epochs=3000, model_func=create_basic_model)
 #pred_batch= train_and_evaluate(reader_train, reader_test, max_epochs=10, model_func=create_basic_model_with_batch_normalization)
 
 pred.save_model(model_file)
