@@ -21,10 +21,10 @@ import cfg
 import detections
 import classifications
 
-user='SzMike'
-#user='picturio'
-output_base_dir=os.path.join(r'C:\Users',user,'OneDrive\WBC\DATA')
-image_dir=os.path.join(output_base_dir,'Annotated','9959  Javított E')
+#onedrive_user='SzMike'
+onedrive_user='picturio'
+output_base_dir=os.path.join(r'C:\Users',onedrive_user,'OneDrive\WBC\DATA')
+image_dir=os.path.join(output_base_dir,'Annotated')
 output_dir=os.path.join(output_base_dir,'Detected_Cropped')
 #mask_dir=os.path.join(output_base_dir,'Mask')
 

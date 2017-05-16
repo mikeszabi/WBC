@@ -11,13 +11,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 #from cntk.device import gpu, set_default_device
-from cntk.ops import cross_entropy_with_softmax, classification_error, relu, input_variable, softmax, element_times
+from cntk import cross_entropy_with_softmax, classification_error, relu, input_variable, softmax, element_times
 from cntk.layers import Convolution, MaxPooling, Dropout, Dense
 from cntk.io import MinibatchSource, ImageDeserializer, StreamDef, StreamDefs, transforms
 from cntk.initializer import glorot_uniform
 from cntk import Trainer
-from cntk.learner import momentum_sgd, learning_rate_schedule, UnitType, momentum_as_time_constant_schedule
-from cntk.utils import log_number_of_parameters, ProgressPrinter
+from cntk import momentum_sgd, learning_rate_schedule, UnitType, momentum_as_time_constant_schedule
+from cntk.logging import log_number_of_parameters, ProgressPrinter
 
 user='picturio'
 output_base_dir=os.path.join(r'C:\Users',user,'OneDrive\WBC\DATA')
@@ -44,16 +44,16 @@ num_classes  = 6
 
 def create_basic_model(input, out_dims):
     
-    convolutional_layer_1  = Convolution((5,5), 32, init=glorot_uniform(), activation=relu, pad=True)(input)
-    pooling_layer_1  = MaxPooling((3,3), strides=(2,2))(convolutional_layer_1 )
+    convolutional_layer_1  = Convolution((3,3), 16, init=glorot_uniform(), activation=relu, pad=True, strides=(1,1))(input)
+    pooling_layer_1  = MaxPooling((2,2), strides=(1,1))(convolutional_layer_1 )
 
-    convolutional_layer_2 = Convolution((7,7), 32, init=glorot_uniform(), activation=relu, pad=True)(pooling_layer_1)
-    pooling_layer_2 = MaxPooling((3,3), strides=(2,2))(convolutional_layer_2)
+    convolutional_layer_2 = Convolution((7,7), 16, init=glorot_uniform(), activation=relu, pad=True, strides=(1,1))(pooling_layer_1)
+    pooling_layer_2 = MaxPooling((2,2), strides=(1,1))(convolutional_layer_2)
 #
-#    net = Convolution((5,5), 128, init=glorot_uniform(), activation=relu, pad=True)(net)
-#    net = MaxPooling((3,3), strides=(2,2))(net)
+    convolutional_layer_3 = Convolution((9,9), 16, init=glorot_uniform(), activation=relu, pad=True, strides=(1,1))(pooling_layer_2)
+    pooling_layer_3 = MaxPooling((3,3), strides=(1,1))(convolutional_layer_3)
     
-    fully_connected_layer  = Dense(128, init=glorot_uniform())(pooling_layer_2)
+    fully_connected_layer  = Dense(256, init=glorot_uniform())(pooling_layer_3)
     dropout_layer = Dropout(0.5)(fully_connected_layer)
 
     output_layer = Dense(out_dims, init=glorot_uniform(), activation=None)(dropout_layer)
@@ -105,7 +105,7 @@ def train_and_evaluate(reader_train, reader_test, max_epochs, model_func):
     pe = classification_error(z, label_var)
 
     # training config
-    epoch_size     = 5000
+    epoch_size     = 3000
     minibatch_size = 32
 
     # Set training parameters
@@ -153,7 +153,7 @@ def train_and_evaluate(reader_train, reader_test, max_epochs, model_func):
     #
     # Evaluation action
     #
-    epoch_size     = 1500
+    epoch_size     = 1000
     minibatch_size = 16
 
     # process minibatches and evaluate the model
@@ -216,7 +216,7 @@ def train_and_evaluate(reader_train, reader_test, max_epochs, model_func):
 reader_train = create_reader(train_map, data_mean_file, True)
 reader_test  = create_reader(test_map, data_mean_file, False)
 
-pred = train_and_evaluate(reader_train, reader_test, max_epochs=3000, model_func=create_basic_model)
+pred = train_and_evaluate(reader_train, reader_test, max_epochs=1000, model_func=create_basic_model)
 #pred_batch= train_and_evaluate(reader_train, reader_test, max_epochs=10, model_func=create_basic_model_with_batch_normalization)
 
 pred.save_model(model_file)
