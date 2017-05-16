@@ -114,7 +114,15 @@ for i, image_file in enumerate(image_list_indir):
          #pts=[(p.centroid[1]/scale,p.centroid[0]/scale)]
          one_shape=('un','circle',pts,'None','None')
          shapelist_WBC.append(one_shape)    
-     
+    
+    """
+    REMOVE ANNOTATIONS CLOSE TO BORDER
+    """
+    for each_bb in shapelist_WBC:
+        bb=each_bb[2]
+        if min((im.shape[1],im.shape[0])-np.average(bb,axis=0))<25 or min(np.average(bb,axis=0))<25:
+            shapelist_WBC.remove(each_bb)
+    
     for one_shape in shapelist_WBC:
         is_pos_detect=False
         i_detected+=1
