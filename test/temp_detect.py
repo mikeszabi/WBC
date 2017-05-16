@@ -40,7 +40,7 @@ import annotations
 
 import time
 
-#image_dir=r'e:\CELLDATA\Slides\1106_kezi_diapH_5_7_12'
+#image_dir=r'c:\Users\SzMike\OneDrive\WBC\DATA\Annotated\9426 Javított E'
 image_dir=os.path.join(os.path.curdir,'data','Test')
 
 included_extenstions = ['*.jpg', '*.bmp', '*.png', '*.gif']
@@ -52,7 +52,7 @@ for i, image_file in enumerate(image_list_indir):
     print(str(i)+' : '+image_file)
 
 
-image_file=image_list_indir[17]
+image_file=image_list_indir[0]
 
 vis_diag=True
 if vis_diag==True:
@@ -75,7 +75,7 @@ for image_file in image_list_indir:
                   
     start_time = time.time()
     
-    diag=diagnostics.diagnostics(im,image_file,vis_diag=False)
+    diag=diagnostics.diagnostics(im,image_file,vis_diag=True)
     
     print('--- %s seconds - Diagnostics ---' % (time.time() - start_time))
     

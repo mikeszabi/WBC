@@ -21,10 +21,10 @@ import cfg
 import detections
 import classifications
 
-#user='SzMike'
-user='picturio'
+user='SzMike'
+#user='picturio'
 output_base_dir=os.path.join(r'C:\Users',user,'OneDrive\WBC\DATA')
-image_dir=os.path.join(output_base_dir,'Annotated')
+image_dir=os.path.join(output_base_dir,'Annotated','9959  Javított E')
 output_dir=os.path.join(output_base_dir,'Detected_Cropped')
 #mask_dir=os.path.join(output_base_dir,'Mask')
 
@@ -81,8 +81,11 @@ for i, image_file in enumerate(image_list_indir):
     """
     PARAMETERS for WBC NORMALIZATION 
     """
-    pixs=im_resize[mask_nuc,]
-    diag.measures['nucleus_median_rgb']=np.median(pixs,axis=0)
+    if mask_nuc.sum()>0:
+        pixs=im_resize[mask_nuc,]
+        diag.measures['nucleus_median_rgb']=np.median(pixs,axis=0)
+    else:
+        continue
 
     """
     READ manual annotations

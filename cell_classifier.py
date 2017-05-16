@@ -135,6 +135,14 @@ def cell_classifier(image_file,cnn=None,save_diag=False,out_dir=''):
              one_shape=(wbc_label[0],'circle',pts,'None','None')
              
          shapelist_WBC.append(one_shape)
+    
+    """
+    REMOVE ANNOTATIONS CLOSE TO BORDER
+    """
+    for each_bb in shapelist_WBC:
+        bb=each_bb[2]
+        if min((im.shape[1],im.shape[0])-np.average(bb,axis=0))<25 or min(np.average(bb,axis=0))<25:
+            shapelist_WBC.remove(each_bb)
          
     shapelist_RBC=[]
     for p in prop_rbc:

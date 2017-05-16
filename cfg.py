@@ -30,6 +30,8 @@ class param:
         self.model_dir=os.path.join(self.root_dir,'model')
         
         self.wbc_types={\
+            'un':'Unknown',\
+#           'art':'Artifact',\
             'bne':'Band neutrophiles',\
             'ne':'Segmented neutrophiles',\
             'eo':'Eosinophiles',\
