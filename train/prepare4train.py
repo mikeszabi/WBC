@@ -59,17 +59,20 @@ def keysWithValue(aDict, target):
     return sorted(key for key, value in aDict.items() if target == value)
 
 
-def enrichMap(mapfile,max_count=200):
+def balanceMap(mapfile,min_count=100,max_count=500):
     df = pd.read_csv(mapfile,delimiter='\t',names=('image','label'))
     label_grouping = df.groupby('label')
 
     df_enrich = [] #pd.DataFrame({'image' : [], 'label' : []})
-    e_groups = [label.sample(max_count,replace=True) for count,label in label_grouping]
+    e_groups = []
+    for count,label in label_grouping:
+        N=min(max(count,min_count),max_count)
+        e_groups.append(label.sample(N,replace=True))    
     df_enrich=pd.concat(e_groups)    
     # random shuffle
     df_enrich=df_enrich.sample(frac=1)  
     head, tail=os.path.splitext(mapfile)
-    e_mapfile=head+'_e'+str(max_count)+tail
+    e_mapfile=head+'_e'+str(min_count)+'_'+str(max_count)+tail
     df_enrich.to_csv(e_mapfile,header=False,sep='\t')
     
     return e_mapfile
@@ -174,5 +177,5 @@ saveTestImages(test_image_list_file,train_dir)
 print ('Done.')
 
 # enrich!
-#train_map=enrichMap(train_map_o,max_count=750)
-#test_map=enrichMap(test_map_o,max_count=250)
+train_map=balanceMap(train_map_o,min_count=60, max_count=600)
+test_map=balanceMap(test_map_o,min_count=20, max_count=200)
