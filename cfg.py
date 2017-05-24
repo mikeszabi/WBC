@@ -31,7 +31,7 @@ class param:
         
         self.wbc_types={\
             'un':'Unknown',\
-#           'art':'Artifact',\
+            'art':'Artifact',\
             'bne':'Band neutrophiles',\
             'ne':'Segmented neutrophiles',\
             'eo':'Eosinophiles',\
@@ -47,6 +47,19 @@ class param:
             'ba':'3',\
             'mo':'4',\
             'ly':'5'}
+        
+        # from wbc_types to wbc_basic_types
+        self.wbc_type_dict={\
+                            'un':'un',\
+                            'art':'un',\
+                            'bne':'ne',\
+                            'ne':'ne',\
+                            'eo':'eo',\
+                            'ba':'ba',\
+                            'mo':'mo',\
+                            'ly':'ly',\
+                            'lgly':'ly',\
+                            'rly':'ly'}
     
     def getImageDirs(self,data_dir=None, dir_name=''):
         if data_dir is None:

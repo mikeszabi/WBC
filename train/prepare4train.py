@@ -66,7 +66,7 @@ def balanceMap(mapfile,min_count=100,max_count=500):
     df_enrich = [] #pd.DataFrame({'image' : [], 'label' : []})
     e_groups = []
     for count,label in label_grouping:
-        N=min(max(count,min_count),max_count)
+        N=min(max(len(label),min_count),max_count)
         e_groups.append(label.sample(N,replace=True))    
     df_enrich=pd.concat(e_groups)    
     # random shuffle
@@ -177,5 +177,5 @@ saveTestImages(test_image_list_file,train_dir)
 print ('Done.')
 
 # enrich!
-train_map=balanceMap(train_map_o,min_count=60, max_count=600)
-test_map=balanceMap(test_map_o,min_count=20, max_count=200)
+train_map=balanceMap(train_map_o,min_count=150, max_count=600)
+test_map=balanceMap(test_map_o,min_count=50, max_count=150)

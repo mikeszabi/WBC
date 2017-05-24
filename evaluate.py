@@ -27,6 +27,7 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
     param=cfg.param()
     wbc_types=param.wbc_types
     wbc_basic_types=param.wbc_basic_types
+    wbc_type_dict=param.wbc_type_dict
 
     image_list_indir=imtools.imagelist_in_depth(image_dir,level=1)
     print('processing '+str(len(image_list_indir))+' images')
@@ -105,12 +106,15 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
         
         if (shapelist) and (annotations_bb):       
             
+            # Initialize
             wbc_stat={}
             wbc_stat['wbc_annotated']=0
             for types in wbc_types.keys():
                 wbc_stat['annotated_'+types]=0
+#            wbc_stat['annotated_not_listed_type']=0
             for types in wbc_basic_types.keys():
                 wbc_stat['detected_'+types]=0
+#            wbc_stat['detected_not_listed_type']=0
             wbc_stat['wbc_detected']=0
             wbc_stat['wbc_matched']=0
             wbc_stat['wbc_type_matched']=0
@@ -122,6 +126,8 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
                     for types in wbc_types.keys():
                         if each_bb[0]==types:
                             wbc_stat['annotated_'+types]+=1
+#                else:
+#                    wbc_stat['annotated_not_listed_type']+=1
                     
             for each_shape in shapelist:
                 if each_shape[0] in list(wbc_basic_types.keys()):
@@ -137,10 +143,16 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
                             if intersect.sum()>0:
                                 p_over=intersect.sum()/len(center_point)
                                 wbc_stat['wbc_matched']+=p_over
-                                if each_bb[0]==each_shape[0]:
+                                basic_type='un'
+                                if each_bb[0] in list(wbc_type_dict.keys()):
+                                    basic_type=wbc_type_dict[each_bb[0]]
+                                   
+                                if basic_type==each_shape[0]:
                                      wbc_stat['wbc_type_matched']+=p_over
                                 annotations_bb.remove(each_bb)
                                 break
+#                else:
+#                    wbc_stat['detected_not_listed_type']+=1
                             
             detect_stat.append((image_file,wbc_stat))    
 
