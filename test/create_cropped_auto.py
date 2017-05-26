@@ -120,7 +120,7 @@ for i, image_file in enumerate(image_list_indir):
     """
     for each_bb in shapelist_WBC:
         bb=each_bb[2]
-        if min((im.shape[1],im.shape[0])-np.average(bb,axis=0))<25 or min(np.average(bb,axis=0))<25:
+        if min((im.shape[1],im.shape[0])-np.average(bb,axis=0))<diag.param.border or min(np.average(bb,axis=0))<diag.param.border:
             shapelist_WBC.remove(each_bb)
     
     for one_shape in shapelist_WBC:
@@ -142,8 +142,8 @@ for i, image_file in enumerate(image_list_indir):
                 if intersect:
                     # automatic detection is within manual annotation
                     is_pos_detect=True   
-                    wbc_type=each_bb[0]
-                    if wbc_type not in list(wbc_types.keys()):
+                    wbc_type=diag.param.wbc_type_dict[each_bb[0]]
+                    if wbc_type not in list(diag.param.wbc_basic_types.keys()):
                         wbc_type='un' # unknown
                         break
             

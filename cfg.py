@@ -12,6 +12,7 @@ class param:
         self.pixelSize=1 # in microns
         self.magnification=1
         self.rbcR=25 # 1280/50
+        self.border=50
         self.cellFillAreaPct=0.33
         self.cellOpeningPct=0.33
         self.small_size=128

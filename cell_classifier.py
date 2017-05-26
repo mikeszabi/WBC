@@ -141,7 +141,7 @@ def cell_classifier(image_file,cnn=None,save_diag=False,out_dir=''):
     """
     for each_bb in shapelist_WBC:
         bb=each_bb[2]
-        if min((im.shape[1],im.shape[0])-np.average(bb,axis=0))<25 or min(np.average(bb,axis=0))<25:
+        if min((im.shape[1],im.shape[0])-np.average(bb,axis=0))<diag.param.border or min(np.average(bb,axis=0))<diag.param.border:
             shapelist_WBC.remove(each_bb)
          
     shapelist_RBC=[]
