@@ -47,9 +47,9 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
                 xmlReader = annotations.AnnotationReader(xml_file_1)
                 annotations_bb=xmlReader.getShapes()
             except:
-                annotations_bb=[]
+                continue
         else:
-            annotations_bb=[]
+            continue
          
         # keep WBC detections    
         annotations_bb = [bb for bb in annotations_bb if bb[0] in list(wbc_types.keys())]
@@ -64,9 +64,9 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
                 xmlReader = annotations.AnnotationReader(xml_file_2)
                 detections_bb=xmlReader.getShapes()
             except:
-                detections_bb=[]
+                continue
         else:
-            detections_bb=[]
+            continue
         # keep WBC detections    
         detections_bb = [bb for bb in detections_bb if bb[0] in list(wbc_basic_types.keys())]
 
@@ -100,10 +100,10 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
         if save_diag and (detections_bb):
             fig = plt.figure('wbc_annotations',figsize=(20,20),dpi=300)
             # Plot manual
-            fig=imtools.plotShapes(im,annotations_bb,color='b',\
-                                   detect_shapes=list(wbc_types.keys()),text='ALL',fig=fig)
+            fig=imtools.plotShapes(im,annotations_bb,color='b',marker='x',ha='left',va='top',\
+                                   detect_shapes=list(wbc_types.keys()),text=list(wbc_types.keys()),fig=fig)
             # Plot automatic
-            fig=imtools.plotShapes(im,detections_bb,color='r',\
+            fig=imtools.plotShapes(im,detections_bb,color='r',ha='right',va='bottom',\
                                    detect_shapes='ALL',text=list(wbc_basic_types.keys()),fig=fig)
             head, tail = str.split(os.path.abspath(xml_file_2),'.')
             detect_image_file=os.path.join(head+'_wbc_annotations.jpg')
@@ -131,6 +131,7 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
         for ai in list(set(range(len(annotations_bb)))-set([i[0] for i in  match_indices])):
             anns.append(wbc_type_dict[annotations_bb[ai][0]])
             dets.append('ND')
+            print(annotations_bb[ai][0])
         for di in list(set(range(len(detections_bb)))-set([i[1] for i in  match_indices])):
             anns.append('NA')
             dets.append(detections_bb[di][0])
@@ -149,6 +150,9 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
     print(contingency)
     # rows are manual annotations, cols are automatic annotations
     
+    """
+    WRITE TO CSV
+    """
     contingency.to_csv(os.path.join(output_dir,'eval_contingency_'+os.path.basename(image_dir)+'.csv'))
     print('n images evaluated:\t'+str(len(image_list_indir)))
     print('n images ok:\t\t'+str(nOK))
