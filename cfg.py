@@ -22,7 +22,8 @@ class param:
         #self.over_saturated_rbc_ratio=0.75
         self.rgb_range_in_hue=((-30/360,30/360), (75/360,135/360), (180/360,240/360))
         #self.wbc_range_in_hue=(230/360,260/360)
-        self.wbc_range_in_hue=(200/360,265/360)
+        self.wbc_range_in_hue=(180/360,270/360)
+        self.wbc_min_sat=90
         self.rgb_norm=(60,60,120)
         #self.hueWidth=2
         self.project='WBC'

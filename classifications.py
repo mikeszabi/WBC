@@ -13,7 +13,6 @@ import numpy as np
 from skimage import exposure
 from skimage import transform
 from skimage import img_as_ubyte
-from scipy import ndimage
 
 from cntk import load_model
 

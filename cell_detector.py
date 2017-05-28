@@ -67,7 +67,8 @@ def cell_detector(image_file,save_diag=False,out_dir=''):
     """
     WBC nucleus masks
     """    
-    mask_nuc=detections.wbc_nucleus_mask(hsv_resize,diag.param,sat_tsh=diag.sat_q95,scale=scale,vis_diag=False,fig='')
+    sat_tsh=max(diag.sat_q95,diag.param.wbc_min_sat)
+    mask_nuc=detections.wbc_nucleus_mask(hsv_resize,diag.param,sat_tsh=sat_tsh,scale=scale,vis_diag=vis_diag,fig='')
     """
     CREATE WBC REGIONS
     """    
