@@ -22,9 +22,9 @@ def wbc_nucleus_mask(hsv,param,scale=1,sat_tsh=100,vis_diag=False,fig=''):
                                             hsv[:,:,0]<param.wbc_range_in_hue[1]*255),\
                                             hsv[:,:,1]>sat_tsh) 
     
-# morphological opening to eliminate small detections    
-    mask_nuc=morphology.binary_opening(mask_nuc,morphology.disk(np.round(max(hsv.shape)/200)))
-#    mask_fg=morphology.binary_closing(mask_fg,morphology.disk(np.round(param.middle_size/128)))
+# morphological opening to eliminate small detections 
+    mask_nuc=morphology.binary_closing(mask_nuc,morphology.disk(np.round(max(hsv.shape)/400)))  
+    mask_nuc=morphology.binary_opening(mask_nuc,morphology.disk(np.round(max(hsv.shape)/400)))
     
     return mask_nuc
 
@@ -37,16 +37,19 @@ def wbc_regions(mask_nuc,param,scale=1,vis_diag=False,fig=''):
 
 # 1st. step: remove small and boundary regions
     label_wbc=np.zeros(label_nuc.shape).astype('int32')
-    props_large=props.copy()
+    
+    props_sorted=sorted(props, key=lambda x: x.area)
+
+    props_large=props_sorted.copy()
+    
     i_clean=0
-    for ip, p in enumerate(props):
-        if p.area<0.1*param.rbcR**2*np.pi*scale**2:
+    for ip, p in enumerate(props_sorted):
+        if p.area<0.15*param.rbcR**2*np.pi*scale**2:
             props_large.remove(p)
             continue
         i_clean+=1
-        label_wbc[label_nuc==ip+1]=i_clean
+        label_wbc[p.coords[:,0],p.coords[:,1]]=i_clean
                  
-#    props_sorted=sorted(props_large, key=lambda x: x.area)
 
 # Merge small neighbouring areas    
     if len(props_large)>0:                   
@@ -65,7 +68,8 @@ def wbc_regions(mask_nuc,param,scale=1,vis_diag=False,fig=''):
             if len(row_use)>0:
                 m_i=np.argmin(row_use)
                 if row_use[m_i]<3*param.rbcR*scale and\
-                   (areas[i]+areas[m_i+i+1]<2*param.rbcR**2*np.pi*scale**2):
+                   (areas[i]+areas[m_i+i+1]<2.5*param.rbcR**2*np.pi*scale**2):
+                       
                    re_labels[re_labels==re_labels[m_i+i+1]]=re_labels[i]
                    areas[m_i+i+1]+=areas[i]
      
@@ -80,8 +84,14 @@ def wbc_regions(mask_nuc,param,scale=1,vis_diag=False,fig=''):
     
     if vis_diag:
         fig=plt.figure('wbc nucleus labels',figsize=(7,7))
-        axs=fig.add_subplot(111)
-        axs.imshow(re_label_wbc)  
+        axs=fig.add_subplot(221)
+        axs.imshow(mask_nuc)  
+        axs=fig.add_subplot(222)
+        axs.imshow(label_nuc)  
+        axs=fig.add_subplot(223)
+        axs.imshow(label_wbc)
+        axs=fig.add_subplot(224)
+        axs.imshow(re_label_wbc) 
     
     # final removal of small elements
     for p in prop_wbc:

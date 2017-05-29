@@ -19,7 +19,19 @@ import diagnostics
 import imtools
 import cfg
 import detections
-import classifications
+import cv2
+
+def rotate(image, angle, center = None, scale = 1.0):
+    (h, w) = image.shape[:2]
+
+    if center is None:
+        center = (w / 2, h / 2)
+
+    # Perform the rotation
+    M = cv2.getRotationMatrix2D(center, angle, scale)
+    rotated = cv2.warpAffine(image, M, (w, h))
+
+    return rotated
 
 #onedrive_user='SzMike'
 onedrive_user='picturio'
@@ -28,14 +40,16 @@ image_dir=os.path.join(output_base_dir,'Annotated')
 output_dir=os.path.join(output_base_dir,'Detected_Cropped')
 #mask_dir=os.path.join(output_base_dir,'Mask')
 
-#image_dir=r'd:\Projects\WBC\data\Test'
-#output_dir=r'd:\Projects\WBC\diag'
+image_dir=r'd:\Projects\WBC\data\Test'
+output_dir=r'd:\Projects\WBC\diag'
 
 
 plt.ioff()
 
 param=cfg.param()
 wbc_types=param.wbc_types
+
+rot_angles=[0,90,180,270]
 
 image_list_indir=imtools.imagelist_in_depth(image_dir,level=1)
 print('processing '+str(len(image_list_indir))+' images')
@@ -63,7 +77,8 @@ for i, image_file in enumerate(image_list_indir):
     """
     WBC nucleus masks
     """    
-    mask_nuc=detections.wbc_nucleus_mask(hsv_resize,diag.param,sat_tsh=diag.sat_q95,scale=scale,vis_diag=False,fig='')
+    sat_tsh=max(diag.sat_q95,diag.param.wbc_min_sat)
+    mask_nuc=detections.wbc_nucleus_mask(hsv_resize,diag.param,sat_tsh=sat_tsh,scale=scale,vis_diag=False,fig='')
    
     """
     CREATE WBC REGIONS
@@ -104,61 +119,74 @@ for i, image_file in enumerate(image_list_indir):
         continue    
 
     """
-    CREATE shapelist 
+    CREATE WBC shapelist 
     """
 
     shapelist_WBC=[]
     for p in prop_wbc:
         # centroid is in row,col
-         pts=[(p.centroid[1]/scale+0.75*p.major_axis_length*np.cos(theta*2*np.pi/20)/scale,p.centroid[0]/scale+0.75*p.major_axis_length*np.sin(theta*2*np.pi/20)/scale) for theta in range(20)] 
+         pts=[(p.centroid[1]/scale+0.8*p.major_axis_length*np.cos(theta*2*np.pi/20)/scale,p.centroid[0]/scale+0.8*p.major_axis_length*np.sin(theta*2*np.pi/20)/scale) for theta in range(20)] 
          #pts=[(p.centroid[1]/scale,p.centroid[0]/scale)]
          one_shape=('un','circle',pts,'None','None')
+         
+         # Do NOT CROP BB-s, which have parts outside the image
+         if min((im.shape[1],im.shape[0])-np.max(one_shape[2],axis=0))<0\
+                or min(np.min(one_shape[2],axis=0))<0:
+            continue
+         
          shapelist_WBC.append(one_shape)    
     
+    shapelist=shapelist_WBC
     """
     REMOVE ANNOTATIONS CLOSE TO BORDER
     """
-    for each_bb in shapelist_WBC:
-        bb=each_bb[2]
-        if min((im.shape[1],im.shape[0])-np.average(bb,axis=0))<diag.param.border or min(np.average(bb,axis=0))<diag.param.border:
-            shapelist_WBC.remove(each_bb)
-    
-    for one_shape in shapelist_WBC:
+    shapelist=annotations.remove_border_annotations(shapelist,im.shape,diag.param.border)
+
+    """
+    CROP DETECTIONS
+    """
+    for one_shape in shapelist:
         is_pos_detect=False
         i_detected+=1
         # centroid is in row,col
-        im_cropped,mask_cropped,o,r=classifications.crop_shape(im_resize,mask_nuc,one_shape,\
-                                                            diag.param.rgb_norm,diag.measures['nucleus_median_rgb'],\
-                                                            scale=scale,adjust=True)
-    
-        if im_cropped is not None:
-            
-            wbc_type='un'
-            for each_bb in annotations_bb:
-    #            if each_bb[0] in list(wbc_types.keys()):
-                    # only if in wbc list to be detected
-                bb=Path(scale*np.array(each_bb[2]))
-                intersect = bb.contains_point(np.asarray(o)) 
-                if intersect:
-                    # automatic detection is within manual annotation
-                    is_pos_detect=True   
-                    wbc_type=diag.param.wbc_type_dict[each_bb[0]]
-                    if wbc_type not in list(diag.param.wbc_basic_types.keys()):
-                        wbc_type='un' # unknown
-                        break
-            
-           
-            # SAVE    
-            crop_file=os.path.join(output_dir,wbc_type+'_'+str(i_detected)+'.png')
-            io.imsave(crop_file,im_cropped)
-            
-            sample={'im':os.path.basename(image_file),'crop':os.path.basename(crop_file),\
-                    'rbcR':diag.param.rbcR,'wbc':wbc_type,\
-                    'scale':scale,'origo':np.asarray(o)/scale,'radius':r/scale,\
-                    'sat_tsh':diag.measures['saturation_q95'],\
-                    'nucleus_median_rgb':diag.measures['nucleus_median_rgb']}
-            samples.append(sample)
+        o=np.average(one_shape[2],axis=0)
+        for alpha in rot_angles:
         
+            im_rotated=rotate(im_resize,alpha,center=(o[0],o[1]))
+            im_cropped,o,r=imtools.crop_shape(im_rotated,one_shape,\
+                                                diag.param.rgb_norm,diag.measures['nucleus_median_rgb'],\
+                                                scale=scale,adjust=True)
+        
+            if im_cropped is not None:
+                
+                wbc_type='un'
+                for each_bb in annotations_bb:
+        #            if each_bb[0] in list(wbc_types.keys()):
+                        # only if in wbc list to be detected
+                    bb=Path(scale*np.array(each_bb[2]))
+                    intersect = bb.contains_point(np.asarray(o)) 
+                    if intersect>0:
+                        # automatic detection is within manual annotation
+                        is_pos_detect=True
+                        if each_bb[0] in list(wbc_types.keys()):
+                            wbc_type=diag.param.wbc_type_dict[each_bb[0]]
+                        if wbc_type not in list(diag.param.wbc_basic_types.keys()):
+                            wbc_type='un' # unknown
+                            break
+                
+               
+                # SAVE    
+                crop_file=os.path.join(output_dir,wbc_type+'_'+str(i_detected)+'_'+str(alpha)+'.png')
+                io.imsave(crop_file,im_cropped)
+                
+                sample={'im':os.path.basename(image_file),'crop':os.path.basename(crop_file),\
+                        'rotation':alpha,
+                        'rbcR':diag.param.rbcR,'wbc':wbc_type,\
+                        'scale':scale,'origo':np.asarray(o)/scale,'radius':r/scale,\
+                        'sat_tsh':diag.measures['saturation_q95'],\
+                        'nucleus_median_rgb':diag.measures['nucleus_median_rgb']}
+                samples.append(sample)
+            
 keys = samples[0].keys()
 with open(os.path.join(output_dir,'detections.csv'), "w", newline='') as f:
     dict_writer = DictWriter(f, keys, delimiter=";")

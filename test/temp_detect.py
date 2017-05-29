@@ -52,7 +52,7 @@ for i, image_file in enumerate(image_list_indir):
     print(str(i)+' : '+image_file)
 
 
-image_file=image_list_indir[0]
+image_file=image_list_indir[22]
 
 vis_diag=True
 if vis_diag==True:
@@ -75,7 +75,7 @@ for image_file in image_list_indir:
                   
     start_time = time.time()
     
-    diag=diagnostics.diagnostics(im,image_file,vis_diag=True)
+    diag=diagnostics.diagnostics(im,image_file,vis_diag=vis_diag)
     
     print('--- %s seconds - Diagnostics ---' % (time.time() - start_time))
     
@@ -97,7 +97,8 @@ for image_file in image_list_indir:
     """   
     start_time = time.time()    
  
-    mask_nuc=detections.wbc_nucleus_mask(hsv_resize,diag.param,sat_tsh=diag.sat_q95,scale=scale,vis_diag=vis_diag,fig='')
+    sat_tsh=max(diag.sat_q95,diag.param.wbc_min_sat)
+    mask_nuc=detections.wbc_nucleus_mask(hsv_resize,diag.param,sat_tsh=sat_tsh,scale=scale,vis_diag=vis_diag,fig='')
 
     print("--- %s seconds - WBC nucleus mask ---" % (time.time() - start_time))
     
@@ -161,16 +162,21 @@ for image_file in image_list_indir:
     shapelist_WBC=[]
     for p in prop_wbc:
         # centroid is in row,col
-         pts=[(p.centroid[1]/scale+0.75*p.major_axis_length*np.cos(theta*2*np.pi/20)/scale,p.centroid[0]/scale+0.75*p.major_axis_length*np.sin(theta*2*np.pi/20)/scale) for theta in range(20)] 
+         pts=[(p.centroid[1]/scale+0.8*p.major_axis_length*np.cos(theta*2*np.pi/20)/scale,p.centroid[0]/scale+0.8*p.major_axis_length*np.sin(theta*2*np.pi/20)/scale) for theta in range(20)] 
+
          #pts=[(p.centroid[1]/scale,p.centroid[0]/scale)]
-         one_shape=('un','circle',pts,'None','None')
+         one_shape=('None','circle',pts,'None','None')
          
          # WBC classification
          
-         im_cropped,mask_cropped,o,r=classifications.crop_shape(im_resize,mask_nuc,one_shape,\
-                                                            diag.param.rgb_norm,diag.measures['nucleus_median_rgb'],\
-                                                            scale=scale,adjust=True)
-         if im_cropped is not None:
+#         if min((im.shape[1],im.shape[0])-np.max(one_shape[2],axis=0))<0\
+#                or min(np.min(one_shape[2],axis=0))<0:
+#            continue
+         
+         im_cropped,o,r=imtools.crop_shape(im,one_shape,\
+                                            diag.param.rgb_norm,diag.measures['nucleus_median_rgb'],\
+                                            scale=scale,adjust=True)
+         if im_cropped is not None and cnn is not None:
              # do the actual classification
              wbc_label, pct=cnn.classify(im_cropped)
              # redefiniton of wbc type
@@ -192,6 +198,14 @@ for image_file in image_list_indir:
             shapelist_RBC.append(one_shape)
     shapelist=shapelist_WBC
     shapelist.extend(shapelist_RBC)
+    
+    """
+    REMOVE ANNOTATIONS CLOSE TO BORDER
+    """
+    
+    shapelist=annotations.remove_border_annotations(shapelist,im.shape,diag.param.border)
+   
+    
     # Plot manual
     fig = plt.figure('detections',figsize=(20,20))
     fig=imtools.plotShapes(im,shapelist,color='r',\

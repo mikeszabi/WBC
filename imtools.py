@@ -11,7 +11,7 @@ import glob
 import numpy as np
 from matplotlib import pyplot as plt
 from skimage.transform import rescale
-from skimage.exposure import cumulative_distribution
+from skimage.exposure import cumulative_distribution, adjust_gamma
 from skimage import filters, img_as_ubyte, morphology
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
@@ -108,7 +108,7 @@ def normalize(im,vis_diag=False,ax=None,fig=''):
         else:
             ax.imshow(im_norm,cmap='jet')
         plt.show()
-    return im_norm            
+    return im_norm       
     
 def getGradientMagnitude(im):
     #Get magnitude of gradient for given image"
@@ -147,6 +147,34 @@ def plotShapes(im, shapelist, detect_shapes='ALL',color='g', text='ALL', marker=
             axs.annotate(shape[0],size=20,xy=(pts[0,0], pts[0, 1]),ha=ha,va=va,\
                          bbox=dict(boxstyle="round", fc="White", ec=color, lw=1),color=color)
     return fig
+
+def adjust_gamma_onechannel(im,ch=2,rgb_norm=128,med_rgb=128):
+    im_adjust=im.copy()
+    gamma=np.log(255-rgb_norm[ch])/np.log(255-med_rgb[ch])
+    gain=min(255/im[:,:,ch].max(),rgb_norm[ch]/np.power(med_rgb[ch],gamma))
+    im_adjust=adjust_gamma(im,gamma=np.mean(gamma),gain=np.mean(gain))
+    return im_adjust
+
+def crop_shape(im,one_shape,rgb_norm,med_rgb,scale=1,adjust=True):
+    # one_shape is a detected shape on im - it's elemnets are: (cell_type,polygon_type,pts,'None','None')
+    mins=(np.min(one_shape[2],axis=0)*scale).astype('int32')
+    maxs=(np.max(one_shape[2],axis=0)*scale).astype('int32')
+    o=(mins+maxs)/2
+    r=(maxs-mins)/2
+        
+    if min(mins)>=0 and maxs[1]<im.shape[0] and maxs[0]<im.shape[1]:
+        # loop over angles
+        im_cropped=im[max(mins[1],0):min(maxs[1],im.shape[0]-1),\
+                            max(mins[0],0):min(maxs[0],im.shape[1]-1)]
+    
+        if adjust:
+            # gamma and gain ONLY FOR BLUE CHANNEL
+            im_cropped=adjust_gamma_onechannel(im_cropped,ch=2,rgb_norm=rgb_norm,med_rgb=med_rgb)
+   
+    else:
+        im_cropped=None
+        
+    return im_cropped, o, r
     
 def histogram_similarity(hist, reference_hist):
    

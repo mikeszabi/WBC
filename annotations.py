@@ -8,7 +8,18 @@ Created on Thu Feb  2 11:21:47 2017
 from xml.etree import ElementTree
 from xml.etree.ElementTree import Element, SubElement
 from lxml import etree
+import numpy as np
 
+
+        
+def remove_border_annotations(shapelist,im_dims,border):
+    for each_shape in shapelist:
+        points=each_shape[2]
+        if min((im_dims[1],im_dims[0])-np.average(points,axis=0))<border\
+            or min(np.average(points,axis=0))<border:
+            shapelist.remove(each_shape)
+            
+    return shapelist
 
 class AnnotationWriter:
 

@@ -120,7 +120,7 @@ def cell_classifier(image_file,cnn=None,save_diag=False,out_dir=''):
     shapelist_WBC=[]
     for p in prop_wbc:
         # centroid is in row,col
-         pts=[(p.centroid[1]/scale+0.75*p.major_axis_length*np.cos(theta*2*np.pi/20)/scale,p.centroid[0]/scale+0.75*p.major_axis_length*np.sin(theta*2*np.pi/20)/scale) for theta in range(20)] 
+         pts=[(p.centroid[1]/scale+0.8*p.major_axis_length*np.cos(theta*2*np.pi/20)/scale,p.centroid[0]/scale+0.8*p.major_axis_length*np.sin(theta*2*np.pi/20)/scale) for theta in range(20)] 
          #pts=[(p.centroid[1]/scale,p.centroid[0]/scale)]
          one_shape=('None','circle',pts,'None','None')
          
@@ -131,10 +131,10 @@ def cell_classifier(image_file,cnn=None,save_diag=False,out_dir=''):
 #            continue
 
          
-         im_cropped,mask_cropped,o,r=classifications.crop_shape(im_resize,mask_nuc,one_shape,\
+         im_cropped,o,r=imtools.crop_shape(im_resize,one_shape,\
                                                             diag.param.rgb_norm,diag.measures['nucleus_median_rgb'],\
                                                             scale=scale,adjust=True)
-         if im_cropped and cnn:
+         if im_cropped is not None and cnn is not None:
              # do the actual classification
              wbc_label, pct=cnn.classify(im_cropped)
              # redefiniton of wbc type
@@ -161,10 +161,8 @@ def cell_classifier(image_file,cnn=None,save_diag=False,out_dir=''):
     """
     REMOVE ANNOTATIONS CLOSE TO BORDER
     """
-    for each_bb in shapelist:
-        bb=each_bb[2]
-        if min((im.shape[1],im.shape[0])-np.average(bb,axis=0))<diag.param.border or min(np.average(bb,axis=0))<diag.param.border:
-            shapelist_WBC.remove(each_bb)
+    shapelist=annotations.remove_border_annotations(shapelist,im.shape,diag.param.border)
+
     
     head, tail=os.path.split(image_file)
     xml_file=os.path.join(output_dir,tail.replace('.bmp',''))
