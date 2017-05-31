@@ -131,12 +131,15 @@ def cell_classifier(image_file,cnn=None,save_diag=False,out_dir=''):
 #            continue
 
          
-         im_cropped,o,r=imtools.crop_shape(im_resize,one_shape,\
-                                                            diag.param.rgb_norm,diag.measures['nucleus_median_rgb'],\
-                                                            scale=scale,adjust=True)
+         im_cropped,o,r=imtools.crop_shape(diag.im_corrected,one_shape,\
+                                            diag.param.rgb_norm,diag.measures['nucleus_median_rgb'],\
+                                            scale=1,adjust=True)
          if im_cropped is not None and cnn is not None:
              # do the actual classification
-             wbc_label, pct=cnn.classify(im_cropped)
+             if r[0] > 1.5*diag.param.rbcR:
+                 wbc_label, pct=cnn.classify(im_cropped)
+             else:
+                 wbc_label='un'
              # redefiniton of wbc type
              one_shape=(wbc_label[0],'circle',pts,'None','None')
              

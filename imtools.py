@@ -151,7 +151,7 @@ def plotShapes(im, shapelist, detect_shapes='ALL',color='g', text='ALL', marker=
 def adjust_gamma_onechannel(im,ch=2,rgb_norm=128,med_rgb=128):
     im_adjust=im.copy()
     gamma=np.log(255-rgb_norm[ch])/np.log(255-med_rgb[ch])
-    gain=min(255/im[:,:,ch].max(),rgb_norm[ch]/np.power(med_rgb[ch],gamma))
+    gain=min(255/im.max(),rgb_norm[ch]/np.power(med_rgb[ch],gamma))
     im_adjust=adjust_gamma(im,gamma=np.mean(gamma),gain=np.mean(gain))
     return im_adjust
 
@@ -162,7 +162,7 @@ def crop_shape(im,one_shape,rgb_norm,med_rgb,scale=1,adjust=True):
     o=(mins+maxs)/2
     r=(maxs-mins)/2
         
-    if min(mins)>=0 and maxs[1]<im.shape[0] and maxs[0]<im.shape[1]:
+    if max(o-r)>0 and sum(o[::-1]+r<im.shape[:-1])==2:
         # loop over angles
         im_cropped=im[max(mins[1],0):min(maxs[1],im.shape[0]-1),\
                             max(mins[0],0):min(maxs[0],im.shape[1]-1)]

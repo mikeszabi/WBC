@@ -30,8 +30,8 @@ model_temp_file=os.path.join(train_dir,'cnn_model_temp.dnn')
 #test_filename = os.path.join(train_dir,'Test_cntk_text.txt')
 #train_regr_labels=os.path.join(train_dir,'train_regrLabels.txt')
 
-train_map=os.path.join(train_dir,'train_map_e150_600.txt')
-test_map=os.path.join(train_dir,'test_map_e50_150.txt')
+train_map=os.path.join(train_dir,'train_map_e600_3000.txt')
+test_map=os.path.join(train_dir,'test_map_e200_1000.txt')
 # GET train and test map from prepare4train
 
 data_mean_file=os.path.join(train_dir,'data_mean.xml')
@@ -45,17 +45,17 @@ num_classes  = 6
 
 def create_basic_model(input, out_dims):
     
-    convolutional_layer_1  = Convolution((5,5), 32, init=glorot_uniform(), activation=relu, pad=True, strides=(1,1))(input)
+    convolutional_layer_1  = Convolution((5,5), 16, init=glorot_uniform(), activation=relu, pad=True, strides=(1,1))(input)
     pooling_layer_1  = MaxPooling((2,2), strides=(1,1))(convolutional_layer_1 )
 
-    convolutional_layer_2 = Convolution((9,9), 32, init=glorot_uniform(), activation=relu, pad=True, strides=(1,1))(pooling_layer_1)
+    convolutional_layer_2 = Convolution((9,9), 16, init=glorot_uniform(), activation=relu, pad=True, strides=(1,1))(pooling_layer_1)
     pooling_layer_2 = MaxPooling((5,5), strides=(2,2))(convolutional_layer_2)
-#
+
 #    convolutional_layer_3 = Convolution((7,7), 32, init=glorot_uniform(), activation=relu, pad=True, strides=(1,1))(pooling_layer_2)
 #    pooling_layer_3 = MaxPooling((3,3), strides=(2,2))(convolutional_layer_3)
 #    
-    fully_connected_layer  = Dense(256, init=glorot_uniform())(pooling_layer_2)
-    dropout_layer = Dropout(0.25)(fully_connected_layer)
+    fully_connected_layer  = Dense(128, init=glorot_uniform())(pooling_layer_2)
+    dropout_layer = Dropout(0.5)(fully_connected_layer)
 
     output_layer = Dense(out_dims, init=glorot_uniform(), activation=None)(dropout_layer)
     
@@ -126,7 +126,7 @@ def train_and_evaluate(reader_train, reader_test, max_epochs, model_func):
     pe = classification_error(z, label_var)
 
     # training config
-    epoch_size     = 1800
+    epoch_size     = 9000
     minibatch_size = 64
 
     # Set training parameters
@@ -175,7 +175,7 @@ def train_and_evaluate(reader_train, reader_test, max_epochs, model_func):
     #
     # Evaluation action
     #
-    epoch_size     = 600
+    epoch_size     = 3000
     minibatch_size = 32
 
     # process minibatches and evaluate the model
@@ -238,8 +238,8 @@ def train_and_evaluate(reader_train, reader_test, max_epochs, model_func):
 reader_train = create_reader(train_map, data_mean_file, True)
 reader_test  = create_reader(test_map, data_mean_file, False)
 
-pred = train_and_evaluate(reader_train, reader_test, max_epochs=2000,
-                          model_func=create_basic_model)
+pred = train_and_evaluate(reader_train, reader_test, max_epochs=500,
+                          model_func=create_advanced_model)
 #pred_batch= train_and_evaluate(reader_train, reader_test, max_epochs=10, model_func=create_basic_model_with_batch_normalization)
 
 pred.save_model(model_file)
