@@ -39,7 +39,9 @@ import cfg
 ## Printing the average of evaluation errors of all test minibatches
 #print("Average errors of all test minibatches: %.3f%%" % (float(np.mean(test_results, dtype=float))*100))
 
-imgSize=32
+param=cfg.param()
+
+imgSize=param.crop_size
 num_classes  = 6
 
 param=cfg.param()

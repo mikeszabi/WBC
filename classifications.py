@@ -24,7 +24,7 @@ class cnn_classification:
     def __init__(self):
         # model specific parameters
         self.param=cfg.param()
-        self.img_size=32
+        self.img_size=self.param.crop_size
         self.img_mean=128
         self.model_name='cnn_model.dnn'
         model_file=os.path.join(self.param.model_dir,self.model_name)

@@ -25,6 +25,7 @@ class param:
         self.wbc_range_in_hue=(180/360,270/360)
         self.wbc_min_sat=90
         self.rgb_norm=(60,60,120)
+        self.crop_size=64
         #self.hueWidth=2
         self.project='WBC'
         self.root_dir=os.curdir

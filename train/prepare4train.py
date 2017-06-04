@@ -25,12 +25,14 @@ import skimage.io as io
 io.use_plugin('pil') # Use only the capability of PIL
 from skimage.transform import resize
 from skimage import img_as_ubyte
+import cfg
 
 #%matplotlib inline
 
 # Config matplotlib for inline plotting
+param=cfg.param()
 
-imgSize = 32
+imgSize=param.crop_size
 nCh=3
 numFeature = imgSize * imgSize * 3
 num_classes  = 6

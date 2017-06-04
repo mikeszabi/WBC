@@ -9,6 +9,7 @@ Created on Fri Dec 23 21:42:51 2016
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+import cfg
 
 #from cntk.device import gpu, set_default_device
 from cntk import cross_entropy_with_softmax, classification_error, relu, input_variable, softmax, element_times
@@ -30,15 +31,17 @@ model_temp_file=os.path.join(train_dir,'cnn_model_temp.dnn')
 #test_filename = os.path.join(train_dir,'Test_cntk_text.txt')
 #train_regr_labels=os.path.join(train_dir,'train_regrLabels.txt')
 
-train_map=os.path.join(train_dir,'train_map_e600_3000.txt')
-test_map=os.path.join(train_dir,'test_map_e200_1000.txt')
+train_map=os.path.join(train_dir,'train_map.txt')
+test_map=os.path.join(train_dir,'test_map.txt')
 # GET train and test map from prepare4train
 
 data_mean_file=os.path.join(train_dir,'data_mean.xml')
 
 # model dimensions
-image_height = 32
-image_width  = 32
+param=cfg.param()
+
+image_height = param.crop_size
+image_width  = param.crop_size
 num_channels = 3
 num_classes  = 6
 
@@ -48,13 +51,13 @@ def create_basic_model(input, out_dims):
     convolutional_layer_1  = Convolution((5,5), 16, init=glorot_uniform(), activation=relu, pad=True, strides=(1,1))(input)
     pooling_layer_1  = MaxPooling((2,2), strides=(1,1))(convolutional_layer_1 )
 
-    convolutional_layer_2 = Convolution((9,9), 16, init=glorot_uniform(), activation=relu, pad=True, strides=(1,1))(pooling_layer_1)
-    pooling_layer_2 = MaxPooling((5,5), strides=(2,2))(convolutional_layer_2)
+#    convolutional_layer_2 = Convolution((9,9), 16, init=glorot_uniform(), activation=relu, pad=True, strides=(1,1))(pooling_layer_1)
+#    pooling_layer_2 = MaxPooling((3,3), strides=(2,2))(convolutional_layer_2)
 
-#    convolutional_layer_3 = Convolution((7,7), 32, init=glorot_uniform(), activation=relu, pad=True, strides=(1,1))(pooling_layer_2)
-#    pooling_layer_3 = MaxPooling((3,3), strides=(2,2))(convolutional_layer_3)
+    convolutional_layer_3 = Convolution((9,9), 16, init=glorot_uniform(), activation=relu, pad=True, strides=(1,1))(pooling_layer_1)
+    pooling_layer_3 = MaxPooling((4,4), strides=(2,2))(convolutional_layer_3)
 #    
-    fully_connected_layer  = Dense(128, init=glorot_uniform())(pooling_layer_2)
+    fully_connected_layer  = Dense(256, init=glorot_uniform())(pooling_layer_3)
     dropout_layer = Dropout(0.5)(fully_connected_layer)
 
     output_layer = Dense(out_dims, init=glorot_uniform(), activation=None)(dropout_layer)
@@ -238,8 +241,8 @@ def train_and_evaluate(reader_train, reader_test, max_epochs, model_func):
 reader_train = create_reader(train_map, data_mean_file, True)
 reader_test  = create_reader(test_map, data_mean_file, False)
 
-pred = train_and_evaluate(reader_train, reader_test, max_epochs=500,
-                          model_func=create_advanced_model)
+pred = train_and_evaluate(reader_train, reader_test, max_epochs=200,
+                          model_func=create_basic_model)
 #pred_batch= train_and_evaluate(reader_train, reader_test, max_epochs=10, model_func=create_basic_model_with_batch_normalization)
 
 pred.save_model(model_file)
