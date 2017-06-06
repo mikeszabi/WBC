@@ -105,7 +105,7 @@ def evaluate_wbc_detection(image_dir,output_dir,save_diag=False):
             # Plot automatic
             fig=imtools.plotShapes(im,detections_bb,color='r',ha='right',va='bottom',\
                                    detect_shapes='ALL',text=list(wbc_basic_types.keys()),fig=fig)
-            head, tail = str.split(os.path.abspath(xml_file_2),'.')
+            head, tail = str.rsplit(os.path.abspath(xml_file_2),'.',1)
             detect_image_file=os.path.join(head+'_wbc_annotations.jpg')
             fig.savefig(detect_image_file,dpi=300)
             plt.close(fig)

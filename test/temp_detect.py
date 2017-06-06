@@ -40,7 +40,7 @@ import annotations
 
 import time
 
-#image_dir=r'c:\Users\SzMike\OneDrive\WBC\DATA\Annotated\9426 Javított E'
+#image_dir=r'd:\DATA\Diagon\Teszthez 17.06.05\9356 AUTO'
 image_dir=os.path.join(os.path.curdir,'data','Test')
 
 included_extenstions = ['*.jpg', '*.bmp', '*.png', '*.gif']
@@ -52,7 +52,7 @@ for i, image_file in enumerate(image_list_indir):
     print(str(i)+' : '+image_file)
 
 
-image_file=image_list_indir[22]
+image_file=image_list_indir[134]
 
 vis_diag=True
 if vis_diag==True:
@@ -181,7 +181,7 @@ for image_file in image_list_indir:
              if r[0] > 1.5*diag.param.rbcR:
                  wbc_label, pct=cnn.classify(im_cropped)
              else:
-                 wbc_label='un'
+                 wbc_label=['un']
              # redefiniton of wbc type
              one_shape=(wbc_label[0],'circle',pts,'None','None')
              

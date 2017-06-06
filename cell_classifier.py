@@ -139,7 +139,7 @@ def cell_classifier(image_file,cnn=None,save_diag=False,out_dir=''):
              if r[0] > 1.5*diag.param.rbcR:
                  wbc_label, pct=cnn.classify(im_cropped)
              else:
-                 wbc_label='un'
+                 wbc_label=['un']
              # redefiniton of wbc type
              one_shape=(wbc_label[0],'circle',pts,'None','None')
              
